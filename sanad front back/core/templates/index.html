@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SavePlate — Zéro Gaspillage Alimentaire</title>
+<title>SANAD — Zéro Gaspillage Alimentaire</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -60,8 +60,8 @@ body {
   z-index:9999; transition: opacity 0.5s;
 }
 .loading-logo { font-family:'Syne',sans-serif; font-size:3rem; font-weight:800; color:var(--green-light); margin-bottom:1rem; }
-.loading-bar { width:200px; height:3px; background:var(--card2); border-radius:2px; overflow:hidden; }
-.loading-fill { height:100%; background:var(--green-light); width:0; animation: loadfill 1.2s ease forwards; }
+.loading-bar { width:200px; height:3px; background:var(--card2); border-radius:3px; overflow:hidden; }
+.loading-fill { height:100%; background:var(--green-light); width:0; animation: loadfill 2s ease forwards; }
 @keyframes loadfill { to { width:100%; } }
 
 /* ── LAYOUT ── */
@@ -221,7 +221,7 @@ main { flex:1; }
 
 /* ── DASHBOARD ── */
 .dashboard-grid { display:grid; grid-template-columns:280px 1fr; gap:1.5rem; max-width:1200px; margin:0 auto; padding:2rem; }
-.sidebar { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:1.5rem; height:fit-content; }
+.sidebar { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:1.5rem; height:fit-content; display:flex; flex-direction:column; gap:.75rem; }
 .sidebar-title { font-family:'Syne',sans-serif; font-size:1.1rem; font-weight:700; margin-bottom:1.25rem; }
 .sidebar-nav { display:flex; flex-direction:column; gap:.25rem; }
 .sidebar-item {
@@ -325,7 +325,10 @@ tr:hover td { background:rgba(255,255,255,.02); }
 
 <!-- Loading -->
 <div id="loading-screen">
-  <div class="loading-logo">🍃 SavePlate</div>
+  <div class="loading-logo" style="display:flex;flex-direction:column;align-items:center;gap:.75rem;">
+  <img src="/static/images/logo.png" style="height:150px;width:150px;object-fit:contain;border-radius:16px;">
+  <span style="color:var(--orange)">S A N A D</span>
+  </div>
   <p style="color:var(--text-dim);margin-bottom:1.5rem;font-size:.9rem;">Chargement de la plateforme…</p>
   <div class="loading-bar"><div class="loading-fill"></div></div>
 </div>
@@ -346,7 +349,10 @@ tr:hover td { background:rgba(255,255,255,.02); }
 
 <div id="app">
 <nav>
-  <div class="nav-logo" onclick="showPage('home')">🍃 Save<span>Plate</span></div>
+  <div class="nav-logo" onclick="showPage('home')">
+  <img src="/static/images/logo.png" style="height:50px;width:50px;object-fit:contain;border-radius:6px;">
+    <span>SANAD</span>
+  </div>
   <div class="nav-links">
     <button class="nav-link" onclick="showPage('feed')">🗺 Feed</button>
     <button class="nav-link" onclick="showPage('map-page')">📍 Carte</button>
@@ -498,9 +504,8 @@ tr:hover td { background:rgba(255,255,255,.02); }
     <div class="sidebar">
       <div class="sidebar-title" id="sidebar-user-name">Mon espace</div>
       <div id="sidebar-role-badge" style="font-size:.78rem;color:var(--text-dim);margin-bottom:1.25rem"></div>
-      <nav class="sidebar-nav" id="sidebar-nav"></nav>
-      <hr style="border:none;border-top:1px solid var(--border);margin:1.25rem 0">
-      <button class="btn btn-outline btn-sm" style="width:100%" onclick="doLogout()">Se déconnecter</button>
+      <nav class="sidebar-nav" id="sidebar-nav" style="background:var(--card2);border-radius:10px;padding:.5rem;margin-bottom:.75rem;"></nav>
+      <button class="btn btn-outline btn-sm" style="width:100%; margin-top:.5rem" onclick="doLogout()">Se déconnecter</button>
     </div>
     <div id="dashboard-content"></div>
   </div>
@@ -525,7 +530,7 @@ tr:hover td { background:rgba(255,255,255,.02); }
 const API = '/api';
 let state = {
   token: localStorage.getItem('sp_token'),
-  user: JSON.parse(localStorage.getItem('sp_user') || 'null'),
+  user: (() => { try { return JSON.parse(localStorage.getItem('sp_user') || 'null'); } catch(e) { localStorage.removeItem('sp_user'); return null; } })(),
   offers: [],
   map: null,
   ws_impact: null,
