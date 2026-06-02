@@ -2999,142 +2999,7 @@ tr:hover td { background:rgba(255,255,255,.02); }
             </div>
         </main>
 
-        <!-- ================================================================= -->
-        <!-- REAL WEBPAGE CONTENT (Served by Django)                          -->
-        <!-- ================================================================= -->
-        <main class="main-content-full" id="main-landing-content">
-            <!-- HOME SCREEN -->
-            <div class="api-page" id="page-home">
-                <section class="hero">
-                    <div>
-                        <div class="hero-badge">🌍 Plateforme anti-gaspillage · Oran, Algérie</div>
-                        <h1>Transformez chaque surplus<br>en <em>repas sauvé</em> —<br>en <span class="orange">temps réel</span></h1>
-                        <p>SavePlate connecte les restaurants avec leurs voisins pour éliminer le gaspillage alimentaire. Chaque transaction compte, chaque kilo est mesuré.</p>
-                        <div class="hero-cta">
-                            <button class="btn btn-primary" style="padding:.85rem 2rem;font-size:1.05rem" onclick="navigateTo('feed')">🍲 Voir les offres</button>
-                            <button class="btn btn-outline" style="padding:.85rem 2rem;font-size:1.05rem" onclick="navigateTo('auth')">Rejoindre la communauté</button>
-                        </div>
-                    </div>
-                </section>
 
-                <div class="impact-strip">
-                    <div class="impact-item">
-                        <span class="impact-num" id="hero-meals">0</span>
-                        <span class="impact-label">Repas sauvés <span class="live-dot"></span></span>
-                    </div>
-                    <div class="impact-item">
-                        <span class="impact-num" id="hero-co2">0</span>
-                        <span class="impact-label">kg CO₂ évités</span>
-                    </div>
-                    <div class="impact-item">
-                        <span class="impact-num" id="hero-water">0</span>
-                        <span class="impact-label">Litres d'eau sauvés</span>
-                    </div>
-                    <div class="impact-item">
-                        <span class="impact-num" id="hero-kg">0</span>
-                        <span class="impact-label">kg de nourriture redirigés</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- FEED SCREEN -->
-            <div class="api-page" id="page-feed" style="display:none;">
-                <div class="section-header">
-                    <h3>🍲 Offres de surplus disponibles</h3>
-                    <span class="badge badge-success" id="api-feed-badge">Chargement...</span>
-                </div>
-                <div class="filter-tabs-bar" id="api-category-filter-bar"></div>
-                <div class="offers-feed-grid" id="api-feed-grid"></div>
-            </div>
-
-            <!-- MAP SCREEN -->
-            <div class="api-page" id="page-map" style="display:none;">
-                <div class="section-header">
-                    <h3>📍 Carte géographique interactive</h3>
-                </div>
-                <div class="map-wrapper-card">
-                    <div id="api-map-container" class="leaflet-container"></div>
-                </div>
-            </div>
-
-            <!-- LEADERBOARD SCREEN -->
-            <div class="api-page" id="page-ranks" style="display:none;">
-                <div class="section-header">
-                    <h3>🏆 Classement des restaurants solidaires</h3>
-                </div>
-                <div class="card" style="margin-top: 15px;">
-                    <div id="api-ranks-list"></div>
-                </div>
-            </div>
-
-            <!-- AUTHENTICATION FORM SCREEN -->
-            <div class="api-page" id="page-auth" style="display:none;">
-                <div class="form-card">
-                    <div class="form-title" id="auth-title" style="font-family:var(--font-heading);font-size:1.35rem;font-weight:700;text-align:center;margin-bottom:1.5rem;">Bienvenue sur SavePlate 🍃</div>
-                    <div class="form-tabs">
-                        <div class="form-tab active" id="tab-login" onclick="switchAuthTab('login')">Se connecter</div>
-                        <div class="form-tab" id="tab-register" onclick="switchAuthTab('register')">S'inscrire</div>
-                    </div>
-
-                    <!-- Login -->
-                    <div id="auth-login-box">
-                        <div class="form-group">
-                            <label>Nom d'utilisateur</label>
-                            <input type="text" id="login-username" placeholder="demo_restaurant">
-                        </div>
-                        <div class="form-group" style="margin-top:10px;">
-                            <label>Mot de passe</label>
-                            <input type="password" id="login-password" placeholder="••••••••">
-                        </div>
-                        <div id="login-error" class="form-error" style="display:none"></div>
-                        <button class="btn btn-primary" style="width:100%;margin-top:15px;padding:10px;justify-content:center;" onclick="doLogin()">Se connecter</button>
-                    </div>
-
-                    <!-- Register -->
-                    <div id="auth-register-box" style="display:none;">
-                        <div class="form-tabs" style="margin-bottom:1rem; padding: 2px;">
-                            <div class="form-tab active" id="role-consumer" onclick="switchRole('consumer')">🧑 Client</div>
-                            <div class="form-tab" id="role-restaurant" onclick="switchRole('restaurant')">🏪 Commerce</div>
-                        </div>
-                        <div class="form-group">
-                            <label>Nom d'utilisateur</label>
-                            <input type="text" id="reg-username">
-                        </div>
-                        <div class="form-group" style="margin-top:10px;">
-                            <label>Email</label>
-                            <input type="email" id="reg-email">
-                        </div>
-                        <div class="form-group" style="margin-top:10px;">
-                            <label>Mot de passe</label>
-                            <input type="password" id="reg-password">
-                        </div>
-                        <div id="restaurant-fields" style="display:none; margin-top:10px;">
-                            <div class="form-group">
-                                <label>Nom du commerce</label>
-                                <input type="text" id="reg-resto-name">
-                            </div>
-                            <div class="form-group" style="margin-top:10px;">
-                                <label>Adresse</label>
-                                <input type="text" id="reg-address">
-                            </div>
-                            <div class="form-group" style="margin-top:10px;">
-                                <label>Type de cuisine</label>
-                                <select id="reg-cuisine">
-                                    <option value="Boulangerie">Boulangerie</option>
-                                    <option value="Traditionnel">Traditionnel</option>
-                                    <option value="Fast Food">Fast Food</option>
-                                    <option value="Italien">Italien</option>
-                                    <option value="Traiteur">Traiteur</option>
-                                    <option value="Hôtel">Hôtel</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div id="reg-error" class="form-error" style="display:none"></div>
-                        <button class="btn btn-primary" style="width:100%;margin-top:15px;padding:10px;justify-content:center;" onclick="doRegister()">Créer mon compte</button>
-                    </div>
-                </div>
-            </div>
-        </main>
     </div>
 
     <!-- MODAL 1: PUBLISH FOR MAGASIN -->
@@ -3403,7 +3268,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         const classmateDashLayout = document.getElementById('classmate-dashboard-layout');
         if (classmateDashLayout) classmateDashLayout.style.display = 'none';
 
-        const adminDashLayout = document.getElementById('admin-dashboard-layout');
+        const adminDashLayout = document.getElementById('app-layout-container');
         if (adminDashLayout) adminDashLayout.style.display = 'flex';
 
         const appSidebar = document.getElementById('app-sidebar');
@@ -3421,7 +3286,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         const classmateNav = document.querySelector('nav:not(.nav-bar)');
         if (classmateNav) classmateNav.style.display = 'flex';
 
-        const adminDashLayout = document.getElementById('admin-dashboard-layout');
+        const adminDashLayout = document.getElementById('app-layout-container');
         if (adminDashLayout) adminDashLayout.style.display = 'none';
 
         await seedIfNeeded();
@@ -3467,7 +3332,7 @@ function showPage(name) {
         if (state.user.role === 'admin') {
             // Show Admin Layout
             document.getElementById('classmate-dashboard-layout').style.display = 'none';
-            document.getElementById('admin-dashboard-layout').style.display = 'flex';
+            document.getElementById('app-layout-container').style.display = 'flex';
             document.getElementById('app-sidebar').style.display = 'flex';
 
             document.getElementById('sidebar-menu-admin').style.display = 'block';
@@ -3490,7 +3355,7 @@ function showPage(name) {
             switchSection('admin-overview');
         } else {
             // Show Classmate Dashboard
-            document.getElementById('admin-dashboard-layout').style.display = 'none';
+            document.getElementById('app-layout-container').style.display = 'none';
             document.getElementById('classmate-dashboard-layout').style.display = 'grid';
 
             loadDashboard();
@@ -3513,7 +3378,7 @@ function toggleSimulation() {
         document.getElementById('page-dashboard').classList.add('active');
 
         document.getElementById('classmate-dashboard-layout').style.display = 'none';
-        document.getElementById('admin-dashboard-layout').style.display = 'flex';
+        document.getElementById('app-layout-container').style.display = 'flex';
         document.getElementById('app-sidebar').style.display = 'flex';
 
         document.getElementById('role-selector-container').style.display = 'flex';
@@ -3526,7 +3391,7 @@ function toggleSimulation() {
         const classmateNav = document.querySelector('nav:not(.nav-bar)');
         if (classmateNav) classmateNav.style.display = 'flex';
 
-        document.getElementById('admin-dashboard-layout').style.display = 'none';
+        document.getElementById('app-layout-container').style.display = 'none';
         
         stopDemoSimulation();
         showPage('home');
