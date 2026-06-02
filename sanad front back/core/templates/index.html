@@ -2144,7 +2144,7 @@ tr:hover td { background:rgba(255,255,255,.02); }
   <img src="/static/images/logo.png" style="height:150px;width:150px;object-fit:contain;border-radius:16px;">
   <span style="color:var(--orange)">S A N A D</span>
   </div>
-  <p style="color:var(--text-dim);margin-bottom:1.5rem;font-size:.9rem;">Chargement de la plateformeÔÇª</p>
+  <p style="color:var(--text-dim);margin-bottom:1.5rem;font-size:.9rem;">Chargement de la plateforme…</p>
   <div class="loading-bar"><div class="loading-fill"></div></div>
 </div>
 
@@ -2155,7 +2155,7 @@ tr:hover td { background:rgba(255,255,255,.02); }
 <div class="modal-overlay" id="offer-modal">
   <div class="modal">
     <div class="modal-header">
-      <span class="modal-title" id="modal-offer-title">D├®tail de l'offre</span>
+      <span class="modal-title" id="modal-offer-title">Détail de l'offre</span>
       <button class="modal-close" onclick="closeModal('offer-modal')">Ô£ò</button>
     </div>
     <div id="modal-offer-body"></div>
@@ -2169,9 +2169,9 @@ tr:hover td { background:rgba(255,255,255,.02); }
     <span>SANAD</span>
   </div>
   <div class="nav-links">
-    <button class="nav-link" onclick="showPage('feed')">­ƒù║ Feed</button>
-    <button class="nav-link" onclick="showPage('map-page')">­ƒôì Carte</button>
-    <button class="nav-link" onclick="showPage('leaderboard-page')">­ƒÅå Classement</button>
+    <button class="nav-link" onclick="showPage('feed')">🗺 Feed</button>
+    <button class="nav-link" onclick="showPage('map-page')">📍 Carte</button>
+    <button class="nav-link" onclick="showPage('leaderboard-page')">🏆 Classement</button>
   </div>
   <div class="nav-actions" id="nav-actions">
     <button class="btn btn-outline" onclick="showPage('auth')">Se connecter</button>
@@ -2185,11 +2185,11 @@ tr:hover td { background:rgba(255,255,255,.02); }
 <div class="page active" id="page-home">
   <section class="hero">
     <div>
-      <div class="hero-badge">­ƒîì Plateforme anti-gaspillage ┬À Oran, Alg├®rie</div>
-      <h1>Transformez chaque surplus<br>en <em>repas sauv├®</em> ÔÇö<br>en <span class="orange">temps r├®el</span></h1>
-      <p>SavePlate connecte les restaurants avec leurs voisins pour ├®liminer le gaspillage alimentaire. Chaque transaction compte, chaque kilo est mesur├®.</p>
+      <div class="hero-badge">🌍 Plateforme anti-gaspillage · Oran, Algérie</div>
+      <h1>Transformez chaque surplus<br>en <em>repas sauvé</em> —<br>en <span class="orange">temps réel</span></h1>
+      <p>SavePlate connecte les restaurants avec leurs voisins pour éliminer le gaspillage alimentaire. Chaque transaction compte, chaque kilo est mesuré.</p>
       <div class="hero-cta">
-        <button class="btn btn-primary" style="padding:.85rem 2rem;font-size:1rem" onclick="showPage('feed')">­ƒì¢ Voir les offres</button>
+        <button class="btn btn-primary" style="padding:.85rem 2rem;font-size:1rem" onclick="showPage('feed')">🍲 Voir les offres</button>
         <button class="btn btn-outline" style="padding:.85rem 2rem;font-size:1rem" onclick="showPage('auth')">Rejoindre maintenant</button>
       </div>
     </div>
@@ -2198,26 +2198,26 @@ tr:hover td { background:rgba(255,255,255,.02); }
   <div class="impact-strip">
     <div class="impact-item">
       <span class="impact-num" id="hero-meals">0</span>
-      <span class="impact-label">Repas sauv├®s <span class="live-dot"></span></span>
+      <span class="impact-label">Repas sauvés <span class="live-dot"></span></span>
     </div>
     <div class="impact-item">
       <span class="impact-num" id="hero-co2">0</span>
-      <span class="impact-label">kg COÔéé ├®vit├®s</span>
+      <span class="impact-label">kg COÔéé évités</span>
     </div>
     <div class="impact-item">
       <span class="impact-num" id="hero-water">0</span>
-      <span class="impact-label">Litres d'eau ├®conomis├®s</span>
+      <span class="impact-label">Litres d'eau économisés</span>
     </div>
     <div class="impact-item">
       <span class="impact-num" id="hero-kg">0</span>
-      <span class="impact-label">kg de nourriture sauv├®s</span>
+      <span class="impact-label">kg de nourriture sauvés</span>
     </div>
   </div>
 
   <div class="section">
     <div class="section-title">Offres du moment <span class="badge" id="active-count">0 actives</span></div>
     <div class="grid" id="home-offers-grid">
-      <div style="color:var(--text-dim);font-size:.9rem;padding:2rem">Chargement des offresÔÇª</div>
+      <div style="color:var(--text-dim);font-size:.9rem;padding:2rem">Chargement des offres…</div>
     </div>
     <div style="text-align:center;margin-top:2rem">
       <button class="btn btn-outline" onclick="showPage('feed')">Voir toutes les offres ÔåÆ</button>
@@ -2228,20 +2228,20 @@ tr:hover td { background:rgba(255,255,255,.02); }
 <!-- FEED -->
 <div class="page" id="page-feed">
   <div class="section">
-    <div class="section-title">­ƒì¢ Offres disponibles <span class="badge" id="feed-count">ÔÇª</span></div>
+    <div class="section-title">🍲 Offres disponibles <span class="badge" id="feed-count">…</span></div>
     <div style="display:flex;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap">
       <select id="filter-category" class="form-group" style="flex:1;min-width:160px;padding:.6rem 1rem;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:8px;font-family:'DM Sans',sans-serif" onchange="loadFeed()">
-        <option value="">Toutes cat├®gories</option>
+        <option value="">Toutes catégories</option>
         <option>Traditionnel</option>
         <option>Italien</option>
         <option>Fast Food</option>
         <option>Boulangerie</option>
         <option>Vegetarien</option>
       </select>
-      <button class="btn btn-outline btn-sm" onclick="loadFeed()">­ƒöä Actualiser</button>
+      <button class="btn btn-outline btn-sm" onclick="loadFeed()">🔄 Actualiser</button>
     </div>
     <div class="grid" id="feed-grid">
-      <div style="color:var(--text-dim);padding:2rem">ChargementÔÇª</div>
+      <div style="color:var(--text-dim);padding:2rem">Chargement…</div>
     </div>
   </div>
 </div>
@@ -2249,9 +2249,9 @@ tr:hover td { background:rgba(255,255,255,.02); }
 <!-- MAP -->
 <div class="page" id="page-map-page">
   <div class="section">
-    <div class="section-title">­ƒôì Carte des offres en direct</div>
+    <div class="section-title">📍 Carte des offres en direct</div>
     <div id="map-container"><div id="map"></div></div>
-    <p style="color:var(--text-dim);font-size:.82rem;margin-top:.75rem">Cliquez sur un marqueur pour voir les d├®tails de l'offre.</p>
+    <p style="color:var(--text-dim);font-size:.82rem;margin-top:.75rem">Cliquez sur un marqueur pour voir les détails de l'offre.</p>
   </div>
 </div>
 
@@ -2259,7 +2259,7 @@ tr:hover td { background:rgba(255,255,255,.02); }
 <div class="page" id="page-auth">
   <div class="section" style="padding-top:4rem">
     <div class="form-card">
-      <div class="form-title">Bienvenue sur SavePlate ­ƒìâ</div>
+      <div class="form-title">Bienvenue sur SavePlate 🍃</div>
       <div class="form-tabs">
         <div class="form-tab active" id="tab-login" onclick="switchAuthTab('login')">Se connecter</div>
         <div class="form-tab" id="tab-register" onclick="switchAuthTab('register')">S'inscrire</div>
@@ -2279,7 +2279,7 @@ tr:hover td { background:rgba(255,255,255,.02); }
         <div id="login-error" class="form-error" style="display:none"></div>
         <button class="btn btn-primary" style="width:100%;padding:.85rem;margin-top:.5rem" onclick="doLogin()">Se connecter</button>
         <p style="text-align:center;color:var(--text-dim);font-size:.8rem;margin-top:1rem">
-          D├®mo: <code style="color:var(--green-light)">demo_consumer</code> / <code style="color:var(--green-light)">demo1234</code><br>
+          Démo: <code style="color:var(--green-light)">demo_consumer</code> / <code style="color:var(--green-light)">demo1234</code><br>
           Restaurant: <code style="color:var(--orange)">demo_restaurant</code> / <code style="color:var(--orange)">demo1234</code>
         </p>
       </div>
@@ -2287,8 +2287,8 @@ tr:hover td { background:rgba(255,255,255,.02); }
       <!-- Register -->
       <div id="auth-register" style="display:none">
         <div class="form-tabs" style="margin-bottom:1rem">
-          <div class="form-tab active" id="role-consumer" onclick="switchRole('consumer')">­ƒºæ Consommateur</div>
-          <div class="form-tab" id="role-restaurant" onclick="switchRole('restaurant')">­ƒÅ¬ Restaurant</div>
+          <div class="form-tab active" id="role-consumer" onclick="switchRole('consumer')">🧑 Consommateur</div>
+          <div class="form-tab" id="role-restaurant" onclick="switchRole('restaurant')">🏪 Restaurant</div>
         </div>
         <div class="form-row">
           <div class="form-group"><label>Nom d'utilisateur</label><input type="text" id="reg-username"></div>
@@ -2301,13 +2301,13 @@ tr:hover td { background:rgba(255,255,255,.02); }
           <div class="form-group">
             <label>Type de cuisine</label>
             <select id="reg-cuisine">
-              <option>Alg├®rien</option><option>Traditionnel</option><option>Fast Food</option>
+              <option>Algérien</option><option>Traditionnel</option><option>Fast Food</option>
               <option>Boulangerie</option><option>Italien</option><option>Fusion</option>
             </select>
           </div>
         </div>
         <div id="reg-error" class="form-error" style="display:none"></div>
-        <button class="btn btn-primary" style="width:100%;padding:.85rem;margin-top:.5rem" onclick="doRegister()">Cr├®er mon compte</button>
+        <button class="btn btn-primary" style="width:100%;padding:.85rem;margin-top:.5rem" onclick="doRegister()">Créer mon compte</button>
       </div>
     </div>
   </div>
@@ -2321,7 +2321,7 @@ tr:hover td { background:rgba(255,255,255,.02); }
       <div class="sidebar-title" id="sidebar-user-name">Mon espace</div>
       <div id="sidebar-role-badge" style="font-size:.78rem;color:var(--text-dim);margin-bottom:1.25rem"></div>
       <nav class="sidebar-nav" id="sidebar-nav" style="background:var(--card2);border-radius:10px;padding:.5rem;margin-bottom:.75rem;"></nav>
-      <button class="btn btn-outline btn-sm" style="width:100%; margin-top:.5rem" onclick="doLogout()">Se d├®connecter</button>
+      <button class="btn btn-outline btn-sm" style="width:100%; margin-top:.5rem" onclick="doLogout()">Se déconnecter</button>
     </div>
     <div id="dashboard-content"></div>
   </div>
@@ -3104,10 +3104,10 @@ tr:hover td { background:rgba(255,255,255,.02); }
 <!-- LEADERBOARD -->
 <div class="page" id="page-leaderboard-page">
   <div class="section">
-    <div class="section-title">­ƒÅå Classement des restaurants</div>
+    <div class="section-title">🏆 Classement des restaurants</div>
     <p style="color:var(--text-dim);margin-bottom:1.5rem;font-size:.9rem">Les restaurants qui sauvent le plus de repas cette semaine.</p>
     <div class="table-wrap" id="leaderboard-list">
-      <div style="padding:2rem;color:var(--text-dim)">ChargementÔÇª</div>
+      <div style="padding:2rem;color:var(--text-dim)">Chargement…</div>
     </div>
   </div>
 </div>
