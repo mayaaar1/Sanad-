@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="fr" translate="no">
+<head>
+<meta charset="UTF-8">
+<meta name="google" content="notranslate">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SANAD &mdash; Zero Gaspillage Alimentaire</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+    // Force all fetch/API calls to point to Django port
+    const originalFetch = window.fetch;
+    window.fetch = function(url, options) {
+        if (typeof url === 'string' && url.includes(':5500')) {
+            url = url.replace(':5500', ':8000');
+        } else if (typeof url === 'string' && url.startsWith('/api/')) {
+            url = `http://127.0.0.1:8000${url}`;
+        }
+        return originalFetch(url, options);
+    };
+</script>
+
+<style>
+:root {
+  --green: #1a9e5c;
+  --green-light: #23c96e;
+  --green-dim: #0e5e36;
+  --orange: #f57c2b;
+  --orange-light: #ff9a47;
+  --cream: #faf6f0;
+  --dark: #0f1a14;
+  --dark2: #162019;
+  --card: #1c2b22;
+  --card2: #223029;
+  --border: rgba(35,201,110,0.15);
+  --text: #e8f0eb;
+  --text-dim: #7a9e87;
+  --red: #e84d4d;
+  --yellow: #f5c842;
+  --radius: 14px;
+  --shadow: 0 8px 32px rgba(0,0,0,0.35);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--dark);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* LOADING */
+#loading-screen {
+  position:fixed; inset:0; background:var(--dark);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  z-index:9999; transition: opacity 0.5s;
+}
+.loading-logo { font-family:'Syne',sans-serif; font-size:3rem; font-weight:800; color:var(--green-light); margin-bottom:1rem; }
+.loading-bar { width:200px; height:3px; background:var(--card2); border-radius:3px; overflow:hidden; }
+.loading-fill { height:100%; background:var(--green-light); width:0; animation: loadfill 2s ease forwards; }
+@keyframes loadfill { to { width:100%; } }
+
+/* LAYOUT */
+#app { display:flex; flex-direction:column; min-height:100vh; }
+nav {
+  position:sticky; top:0; z-index:100;
+  background: rgba(15,26,20,0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 2rem;
+  display:flex; align-items:center; justify-content:space-between; height:64px;
+}
+.nav-logo { font-family:'Syne',sans-serif; font-size:1.4rem; font-weight:800; color:var(--green-light); display:flex; align-items:center; gap:.5rem; cursor:pointer; }
+.nav-logo span { color:var(--orange); }
+.nav-links { display:flex; gap:.25rem; }
+.nav-link {
+  padding:.5rem 1rem; border-radius:8px; cursor:pointer; font-size:.9rem;
+  color:var(--text-dim); transition:all .2s; border:none; background:none;
+  font-family:'DM Sans',sans-serif;
+}
+.nav-link:hover, .nav-link.active { background:var(--card); color:var(--text); }
+.nav-actions { display:flex; gap:.75rem; align-items:center; }
+.btn { padding:.6rem 1.4rem; border-radius:8px; cursor:pointer; font-size:.88rem; font-weight:500; border:none; transition:all .2s; font-family:'DM Sans',sans-serif; }
+.btn-primary { background:var(--green); color:#fff; }
+.btn-primary:hover { background:var(--green-light); transform:translateY(-1px); }
+.btn-outline { background:transparent; color:var(--green-light); border:1.5px solid var(--green); }
+.btn-outline:hover { background:var(--green); color:#fff; }
+.btn-orange { background:var(--orange); color:#fff; }
+.btn-orange:hover { background:var(--orange-light); }
+.btn-danger { background:var(--red); color:#fff; }
+.btn-sm { padding:.4rem .9rem; font-size:.82rem; }
+
+main { flex:1; }
+.page { display:none; }
+.page.active { display:block; }
+
+/* HERO */
+.hero {
+  min-height: calc(100vh - 64px);
+  display:grid; place-items:center; text-align:center; padding:4rem 2rem;
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(26,158,92,0.12) 0%, transparent 70%);
+  position:relative; overflow:hidden;
+}
+.hero::before {
+  content:''; position:absolute; inset:0;
+  background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%231a9e5c' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+.hero-badge {
+  display:inline-flex; align-items:center; gap:.5rem;
+  background:rgba(26,158,92,0.15); border:1px solid var(--border);
+  padding:.4rem 1rem; border-radius:99px; font-size:.82rem; color:var(--green-light);
+  margin-bottom:2rem; animation: fadeUp .6s ease;
+}
+.hero h1 {
+  font-family:'Syne',sans-serif; font-size:clamp(2.5rem, 6vw, 5rem);
+  font-weight:800; line-height:1.05; margin-bottom:1.5rem;
+  animation: fadeUp .7s ease;
+}
+.hero h1 em { color:var(--green-light); font-style:normal; }
+.hero h1 .orange { color:var(--orange); }
+.hero p {
+  font-size:1.1rem; color:var(--text-dim); max-width:520px; margin:0 auto 2.5rem;
+  line-height:1.7; animation: fadeUp .8s ease;
+}
+.hero-cta { display:flex; gap:1rem; justify-content:center; flex-wrap:wrap; animation: fadeUp .9s ease; }
+
+/* Impact counter strip */
+.impact-strip {
+  background:var(--card); border-top:1px solid var(--border); border-bottom:1px solid var(--border);
+  padding:1.5rem 2rem; display:flex; justify-content:center; gap:3rem; flex-wrap:wrap;
+}
+.impact-item { text-align:center; }
+.impact-num {
+  font-family:'Syne',sans-serif; font-size:2rem; font-weight:800;
+  color:var(--green-light); display:block;
+  transition: all .4s ease;
+}
+.impact-label { font-size:.8rem; color:var(--text-dim); text-transform:uppercase; letter-spacing:.05em; }
+.impact-item .live-dot {
+  display:inline-block; width:6px; height:6px; border-radius:50%;
+  background:var(--green-light); margin-left:4px; vertical-align:middle;
+  animation: pulse 1.5s infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(1.5)} }
+
+/* CARDS */
+.section { padding:3rem 2rem; max-width:1200px; margin:0 auto; }
+.section-title {
+  font-family:'Syne',sans-serif; font-size:1.6rem; font-weight:700;
+  margin-bottom:1.5rem; display:flex; align-items:center; gap:.75rem;
+}
+.section-title .badge {
+  font-size:.75rem; background:var(--green-dim); color:var(--green-light);
+  padding:.2rem .7rem; border-radius:99px; font-family:'DM Sans',sans-serif; font-weight:500;
+}
+.grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap:1.25rem; }
+
+.offer-card {
+  background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+  overflow:hidden; transition:transform .2s, box-shadow .2s; cursor:pointer;
+  position:relative;
+}
+.offer-card:hover { transform:translateY(-3px); box-shadow:var(--shadow); }
+.offer-card-img {
+  height:160px; background:linear-gradient(135deg, var(--green-dim), var(--dark2));
+  display:flex; align-items:center; justify-content:center; font-size:3rem; position:relative;
+}
+.offer-card-img img { width:100%; height:100%; object-fit:cover; }
+.discount-badge {
+  position:absolute; top:10px; right:10px;
+  background:var(--orange); color:#fff;
+  font-family:'Syne',sans-serif; font-weight:700; font-size:.85rem;
+  padding:.3rem .65rem; border-radius:8px;
+}
+.urgency-badge {
+  position:absolute; top:10px; left:10px;
+  background:rgba(15,26,20,.85); backdrop-filter:blur(8px);
+  color:var(--yellow); font-size:.78rem; font-weight:500;
+  padding:.25rem .6rem; border-radius:6px; display:flex; align-items:center; gap:.3rem;
+}
+.offer-card-body { padding:1rem; }
+.offer-card-title { font-family:'Syne',sans-serif; font-size:1rem; font-weight:700; margin-bottom:.25rem; }
+.offer-card-resto { font-size:.82rem; color:var(--text-dim); margin-bottom:.75rem; }
+.offer-card-footer { display:flex; align-items:center; justify-content:space-between; }
+.price-block { display:flex; align-items:baseline; gap:.5rem; }
+.price-current { font-family:'Syne',sans-serif; font-size:1.2rem; font-weight:700; color:var(--green-light); }
+.price-orig { font-size:.85rem; color:var(--text-dim); text-decoration:line-through; }
+.qty-badge { font-size:.78rem; background:rgba(26,158,92,.15); color:var(--green-light); padding:.2rem .6rem; border-radius:6px; }
+
+/* MAP */
+#map-container { height:450px; border-radius:var(--radius); overflow:hidden; border:1px solid var(--border); }
+#map { height:100%; }
+
+/* FORMS */
+.form-card {
+  background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+  padding:2rem; max-width:480px; margin:0 auto;
+}
+.form-title { font-family:'Syne',sans-serif; font-size:1.4rem; font-weight:700; margin-bottom:1.5rem; text-align:center; }
+.form-group { margin-bottom:1.1rem; }
+.form-group label { display:block; font-size:.85rem; color:var(--text-dim); margin-bottom:.4rem; font-weight:500; }
+.form-group input, .form-group select, .form-group textarea {
+  width:100%; padding:.75rem 1rem; border-radius:8px;
+  background:var(--dark2); border:1.5px solid var(--border);
+  color:var(--text); font-size:.9rem; font-family:'DM Sans',sans-serif;
+  transition:border .2s; outline:none;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+  border-color:var(--green);
+}
+.form-row { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+.form-tabs { display:flex; background:var(--dark2); border-radius:10px; padding:4px; margin-bottom:1.5rem; }
+.form-tab { flex:1; text-align:center; padding:.6rem; border-radius:7px; cursor:pointer; font-size:.88rem; transition:all .2s; }
+.form-tab.active { background:var(--green); color:#fff; font-weight:600; }
+.form-error { color:var(--red); font-size:.82rem; margin-top:.4rem; }
+.form-success { color:var(--green-light); font-size:.85rem; text-align:center; padding:.75rem; background:rgba(26,158,92,.1); border-radius:8px; margin-bottom:1rem; }
+
+/* DASHBOARD */
+.dashboard-grid { display:grid; grid-template-columns:280px 1fr; gap:1.5rem; max-width:1200px; margin:0 auto; padding:2rem; }
+.sidebar { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:1.5rem; height:fit-content; display:flex; flex-direction:column; gap:.75rem; }
+.sidebar-title { font-family:'Syne',sans-serif; font-size:1.1rem; font-weight:700; margin-bottom:1.25rem; }
+.sidebar-nav { display:flex; flex-direction:column; gap:.25rem; }
+.sidebar-item {
+  padding:.65rem 1rem; border-radius:8px; cursor:pointer; font-size:.88rem;
+  color:var(--text-dim); display:flex; align-items:center; gap:.75rem; transition:all .2s;
+}
+.sidebar-item:hover, .sidebar-item.active { background:rgba(26,158,92,.12); color:var(--green-light); }
+.stat-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:1rem; margin-bottom:1.5rem; }
+.stat-card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:1.25rem; }
+.stat-val { font-family:'Syne',sans-serif; font-size:1.8rem; font-weight:800; color:var(--green-light); }
+.stat-label { font-size:.82rem; color:var(--text-dim); margin-top:.25rem; }
+.stat-card.orange .stat-val { color:var(--orange); }
+.stat-card.yellow .stat-val { color:var(--yellow); }
+.stat-card.red .stat-val { color:var(--red); }
+
+/* Tables */
+.table-wrap { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+table { width:100%; border-collapse:collapse; }
+th { padding:.85rem 1rem; text-align:left; font-size:.8rem; text-transform:uppercase; letter-spacing:.06em; color:var(--text-dim); background:var(--card2); border-bottom:1px solid var(--border); font-weight:600; }
+td { padding:.85rem 1rem; font-size:.9rem; border-bottom:1px solid rgba(255,255,255,.04); }
+tr:last-child td { border:none; }
+tr:hover td { background:rgba(255,255,255,.02); }
+
+/* Predictions */
+.prediction-card { background:var(--card2); border:1px solid var(--border); border-radius:10px; padding:1rem; display:flex; align-items:center; gap:1rem; margin-bottom:.75rem; }
+.risk-badge { padding:.3rem .75rem; border-radius:99px; font-size:.78rem; font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
+.risk-high { background:rgba(232,77,77,.2); color:var(--red); }
+.risk-medium { background:rgba(245,200,66,.15); color:var(--yellow); }
+.risk-low { background:rgba(26,158,92,.15); color:var(--green-light); }
+
+/* Progress bars */
+.progress-bar { height:6px; background:var(--dark2); border-radius:3px; overflow:hidden; }
+.progress-fill { height:100%; background:var(--green); border-radius:3px; transition:width .5s ease; }
+.progress-fill.orange { background:var(--orange); }
+
+/* Toast */
+.toast-container { position:fixed; bottom:2rem; right:2rem; z-index:9998; display:flex; flex-direction:column; gap:.5rem; }
+.toast {
+  background:var(--card2); border:1px solid var(--border); border-radius:10px;
+  padding:.85rem 1.25rem; display:flex; align-items:center; gap:.75rem;
+  font-size:.88rem; min-width:280px; box-shadow:var(--shadow);
+  animation: slideIn .3s ease;
+}
+.toast.success { border-color:rgba(26,158,92,.4); }
+.toast.error { border-color:rgba(232,77,77,.4); }
+.toast-icon { font-size:1.1rem; }
+@keyframes slideIn { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
+
+/* Status chips */
+.chip { display:inline-block; padding:.2rem .65rem; border-radius:99px; font-size:.78rem; font-weight:600; }
+.chip-active { background:rgba(26,158,92,.2); color:var(--green-light); }
+.chip-saved { background:rgba(35,201,110,.15); color:#5ef59a; }
+.chip-expired { background:rgba(232,77,77,.15); color:var(--red); }
+.chip-reserved { background:rgba(245,200,66,.15); color:var(--yellow); }
+
+/* Leaderboard */
+.leader-row { display:flex; align-items:center; gap:1rem; padding:.85rem 1rem; border-bottom:1px solid rgba(255,255,255,.04); }
+.leader-rank { font-family:'Syne',sans-serif; font-size:1.3rem; font-weight:800; width:36px; text-align:center; color:var(--text-dim); }
+.leader-rank.gold { color:#ffd700; }
+.leader-rank.silver { color:#c0c0c0; }
+.leader-rank.bronze { color:#cd7f32; }
+.leader-info { flex:1; }
+.leader-name { font-weight:600; font-size:.92rem; }
+.leader-cuisine { font-size:.8rem; color:var(--text-dim); }
+.leader-meals { font-family:'Syne',sans-serif; font-weight:700; color:var(--green-light); }
+
+/* Modals */
+.modal-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,.7); backdrop-filter:blur(4px);
+  z-index:500; display:none; place-items:center;
+}
+.modal-overlay.open { display:grid; }
+.modal {
+  background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+  padding:2rem; max-width:500px; width:90%; max-height:90vh; overflow-y:auto;
+  animation: fadeUp .25s ease;
+}
+.modal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem; }
+.modal-title { font-family:'Syne',sans-serif; font-size:1.2rem; font-weight:700; }
+.modal-close { background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:1.3rem; line-height:1; }
+
+@keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+
+/* Responsive */
+@media(max-width:768px) {
+  .dashboard-grid { grid-template-columns:1fr; }
+  .sidebar { display:none; }
+  .form-row { grid-template-columns:1fr; }
+  .impact-strip { gap:1.5rem; }
+  nav { padding:0 1rem; }
+  .nav-links { display:none; }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width:6px; }
+::-webkit-scrollbar-track { background:var(--dark2); }
+::-webkit-scrollbar-thumb { background:var(--card2); border-radius:3px; }
+</style>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="loading-screen">
+  <div class="loading-logo" style="display:flex;flex-direction:column;align-items:center;gap:.75rem;">
+    <span style="font-size:3rem;">🌿</span>
+    <span style="color:var(--orange)">S A N A D</span>
+  </div>
+  <p style="color:var(--text-dim);margin-bottom:1.5rem;font-size:.9rem;">Chargement de la plateforme...</p>
+  <div class="loading-bar"><div class="loading-fill"></div></div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toasts"></div>
+
+<!-- Modals -->
+<div class="modal-overlay" id="offer-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-offer-title">Detail de l'offre</span>
+      <button class="modal-close" onclick="closeModal('offer-modal')">&times;</button>
+    </div>
+    <div id="modal-offer-body"></div>
+  </div>
+</div>
+
+<div id="app">
+<nav>
+  <div class="nav-logo" onclick="showPage('home')"><span style="font-size:1.6rem;">🌿</span><span>SANAD</span></div>
+  <div class="nav-links">
+    <button class="nav-link" onclick="showPage('feed')">Feed</button>
+    <button class="nav-link" onclick="showPage('map-page')">Carte</button>
+    <button class="nav-link" onclick="showPage('leaderboard-page')">Classement</button>
+  </div>
+  <div class="nav-actions" id="nav-actions">
+    <button class="btn btn-outline" onclick="showPage('auth')">Se connecter</button>
+    <button class="btn btn-primary" onclick="showPage('auth')">S'inscrire</button>
+    <a href="admin.html" target="_blank" rel="noopener" style="padding:.5rem 1rem;border-radius:8px;font-size:.78rem;background:rgba(35,201,110,0.08);border:1px solid rgba(35,201,110,0.3);color:#23c96e;text-decoration:none;font-weight:600;white-space:nowrap;">Admin Panel</a>
+  </div>
+</nav>
+
+<main>
+
+<!-- HOME -->
+<div class="page active" id="page-home">
+  <section class="hero">
+    <div>
+      <div class="hero-badge">&#x1F4CD; Plateforme anti-gaspillage &mdash; Oran, Algerie</div>
+      <h1>Transformez chaque surplus<br>en <em>repas sauve</em> &mdash;<br>en <span class="orange">temps reel</span></h1>
+      <p>SavePlate connecte les restaurants avec leurs voisins pour eliminer le gaspillage alimentaire. Chaque transaction compte, chaque kilo est mesure.</p>
+      <div class="hero-cta">
+        <button class="btn btn-primary" style="padding:.85rem 2rem;font-size:1rem" onclick="showPage('feed')">Voir les offres</button>
+        <button class="btn btn-outline" style="padding:.85rem 2rem;font-size:1rem" onclick="showPage('auth')">Rejoindre maintenant</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="impact-strip">
+    <div class="impact-item">
+      <span class="impact-num" id="hero-meals">0</span>
+      <span class="impact-label">Repas sauves <span class="live-dot"></span></span>
+    </div>
+    <div class="impact-item">
+      <span class="impact-num" id="hero-co2">0</span>
+      <span class="impact-label">kg CO2 evites</span>
+    </div>
+    <div class="impact-item">
+      <span class="impact-num" id="hero-water">0</span>
+      <span class="impact-label">Litres d'eau economises</span>
+    </div>
+    <div class="impact-item">
+      <span class="impact-num" id="hero-kg">0</span>
+      <span class="impact-label">kg de nourriture sauves</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Offres du moment <span class="badge" id="active-count">0 actives</span></div>
+    <div class="grid" id="home-offers-grid">
+      <div style="color:var(--text-dim);font-size:.9rem;padding:2rem">Chargement des offres...</div>
+    </div>
+    <div style="text-align:center;margin-top:2rem">
+      <button class="btn btn-outline" onclick="showPage('feed')">Voir toutes les offres &rarr;</button>
+    </div>
+  </div>
+</div>
+
+<!-- FEED -->
+<div class="page" id="page-feed">
+  <div class="section">
+    <div class="section-title">Offres disponibles <span class="badge" id="feed-count">...</span></div>
+    <div style="display:flex;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap">
+      <select id="filter-category" class="form-group" style="flex:1;min-width:160px;padding:.6rem 1rem;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:8px;font-family:'DM Sans',sans-serif" onchange="loadFeed()">
+        <option value="">Toutes categories</option>
+        <option>Traditionnel</option>
+        <option>Italien</option>
+        <option>Fast Food</option>
+        <option>Boulangerie</option>
+        <option>Vegetarien</option>
+      </select>
+      <button class="btn btn-outline btn-sm" onclick="loadFeed()">Actualiser</button>
+    </div>
+    <div class="grid" id="feed-grid">
+      <div style="color:var(--text-dim);padding:2rem">Chargement...</div>
+    </div>
+  </div>
+</div>
+
+<!-- MAP -->
+<div class="page" id="page-map-page">
+  <div class="section">
+    <div class="section-title">Carte des offres en direct</div>
+    <div id="map-container"><div id="map"></div></div>
+    <p style="color:var(--text-dim);font-size:.82rem;margin-top:.75rem">Cliquez sur un marqueur pour voir les details de l'offre.</p>
+  </div>
+</div>
+
+<!-- AUTH -->
+<div class="page" id="page-auth">
+  <div class="section" style="padding-top:4rem">
+    <div class="form-card">
+      <div class="form-title">Bienvenue sur Sanad</div>
+      <div class="form-tabs">
+        <div class="form-tab active" id="tab-login" onclick="switchAuthTab('login')">Se connecter</div>
+        <div class="form-tab" id="tab-register" onclick="switchAuthTab('register')">S'inscrire</div>
+      </div>
+
+      <!-- Login -->
+      <div id="auth-login">
+        <div id="login-success" class="form-success" style="display:none"></div>
+        <div class="form-group">
+          <label>Nom d'utilisateur</label>
+          <input type="text" id="login-username" placeholder="demo_consumer">
+        </div>
+        <div class="form-group">
+          <label>Mot de passe</label>
+          <input type="password" id="login-password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;">
+        </div>
+        <div id="login-error" class="form-error" style="display:none"></div>
+        <button class="btn btn-primary" style="width:100%;padding:.85rem;margin-top:.5rem" onclick="doLogin()">Se connecter</button>
+        <p style="text-align:center;color:var(--text-dim);font-size:.8rem;margin-top:1rem">
+          Demo: <code style="color:var(--green-light)">demo_consumer</code> / <code style="color:var(--green-light)">demo1234</code><br>
+          Restaurant: <code style="color:var(--orange)">demo_restaurant</code> / <code style="color:var(--orange)">demo1234</code>
+        </p>
+      </div>
+
+      <!-- Register -->
+      <div id="auth-register" style="display:none">
+        <div class="form-tabs" style="margin-bottom:1rem">
+          <div class="form-tab active" id="role-consumer" onclick="switchRole('consumer')">Consommateur</div>
+          <div class="form-tab" id="role-restaurant" onclick="switchRole('restaurant')">Restaurant</div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Nom d'utilisateur</label><input type="text" id="reg-username"></div>
+          <div class="form-group"><label>Email</label><input type="email" id="reg-email"></div>
+        </div>
+        <div class="form-group"><label>Mot de passe</label><input type="password" id="reg-password"></div>
+        <div id="restaurant-fields" style="display:none">
+          <div class="form-group"><label>Nom du restaurant</label><input type="text" id="reg-resto-name"></div>
+          <div class="form-group"><label>Adresse</label><input type="text" id="reg-address"></div>
+          <div class="form-group">
+            <label>Type de cuisine</label>
+            <select id="reg-cuisine">
+              <option>Algerien</option><option>Traditionnel</option><option>Fast Food</option>
+              <option>Boulangerie</option><option>Italien</option><option>Fusion</option>
+            </select>
+          </div>
+        </div>
+        <div id="reg-error" class="form-error" style="display:none"></div>
+        <button class="btn btn-primary" style="width:100%;padding:.85rem;margin-top:.5rem" onclick="doRegister()">Creer mon compte</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD (shared, content changes by role) -->
+<div class="page" id="page-dashboard">
+  <div class="dashboard-grid">
+    <div class="sidebar">
+      <div class="sidebar-title" id="sidebar-user-name">Mon espace</div>
+      <div id="sidebar-role-badge" style="font-size:.78rem;color:var(--text-dim);margin-bottom:1.25rem"></div>
+      <nav class="sidebar-nav" id="sidebar-nav" style="background:var(--card2);border-radius:10px;padding:.5rem;margin-bottom:.75rem;"></nav>
+      <button class="btn btn-outline btn-sm" style="width:100%; margin-top:.5rem" onclick="doLogout()">Se deconnecter</button>
+    </div>
+    <div id="dashboard-content"></div>
+  </div>
+</div>
+
+<!-- LEADERBOARD -->
+<div class="page" id="page-leaderboard-page">
+  <div class="section">
+    <div class="section-title">Classement des restaurants</div>
+    <p style="color:var(--text-dim);margin-bottom:1.5rem;font-size:.9rem">Les restaurants qui sauvent le plus de repas cette semaine.</p>
+    <div class="table-wrap" id="leaderboard-list">
+      <div style="padding:2rem;color:var(--text-dim)">Chargement...</div>
+    </div>
+  </div>
+</div>
+
+</main>
+</div>
+
+<script>
+const API = '/api';
+let state = {
+  token: localStorage.getItem('sp_token'),
+  user: (() => { try { return JSON.parse(localStorage.getItem('sp_user') || 'null'); } catch(e) { localStorage.removeItem('sp_user'); return null; } })(),
+  offers: [],
+  map: null,
+  ws_impact: null,
+  currentDashboardSection: null,
+};
+
+window.addEventListener('DOMContentLoaded', async () => {
+  setTimeout(() => {
+    document.getElementById('loading-screen').style.opacity = '0';
+    setTimeout(() => document.getElementById('loading-screen').remove(), 500);
+  }, 1400);
+
+  await seedIfNeeded();
+  await loadGlobalImpact();
+  await loadHomeOffers();
+  connectWebSocket();
+  updateNavForAuth();
+
+  if (state.token && state.user) {
+    updateNavForAuth();
+  }
+});
+
+async function seedIfNeeded() {
+  try {
+    const r = await fetch(`${API}/seed/`, {method:'POST'});
+  } catch(e) {}
+}
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+  document.getElementById(`page-${name}`).classList.add('active');
+  const btn = document.querySelector(`.nav-link[onclick*="${name}"]`);
+  if (btn) btn.classList.add('active');
+
+  if (name === 'feed') loadFeed();
+  if (name === 'map-page') initMap();
+  if (name === 'leaderboard-page') loadLeaderboard();
+  if (name === 'dashboard') {
+    if (!state.token) { showPage('auth'); return; }
+    loadDashboard();
+  }
+  window.scrollTo(0,0);
+}
+
+async function apiFetch(endpoint, opts={}) {
+  const headers = {'Content-Type':'application/json'};
+  if (state.token) headers['Authorization'] = `Bearer ${state.token}`;
+  const res = await fetch(`${API}${endpoint}`, {headers, ...opts});
+  if (res.status === 401) { doLogout(); return null; }
+  return res;
+}
+
+let currentRole = 'consumer';
+function switchAuthTab(tab) {
+  document.getElementById('auth-login').style.display = tab==='login' ? 'block' : 'none';
+  document.getElementById('auth-register').style.display = tab==='register' ? 'block' : 'none';
+  document.getElementById('tab-login').className = 'form-tab' + (tab==='login' ? ' active' : '');
+  document.getElementById('tab-register').className = 'form-tab' + (tab==='register' ? ' active' : '');
+}
+function switchRole(role) {
+  currentRole = role;
+  document.getElementById('role-consumer').className = 'form-tab' + (role==='consumer' ? ' active' : '');
+  document.getElementById('role-restaurant').className = 'form-tab' + (role==='restaurant' ? ' active' : '');
+  document.getElementById('restaurant-fields').style.display = role==='restaurant' ? 'block' : 'none';
+}
+
+async function doLogin() {
+  const username = document.getElementById('login-username').value;
+  const password = document.getElementById('login-password').value;
+  const err = document.getElementById('login-error');
+  err.style.display = 'none';
+  try {
+    const res = await fetch(`${API}/auth/login/`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({username, password})
+    });
+    const data = await res.json();
+    if (!res.ok) { err.textContent = data.error || 'Identifiants incorrects'; err.style.display='block'; return; }
+    state.token = data.access;
+    state.user = data.user;
+    localStorage.setItem('sp_token', data.access);
+    localStorage.setItem('sp_user', JSON.stringify(data.user));
+    updateNavForAuth();
+    toast('Bienvenue, ' + data.user.username + '!', 'success');
+    showPage('dashboard');
+  } catch(e) {
+    err.textContent = 'Erreur de connexion'; err.style.display='block';
+  }
+}
+
+async function doRegister() {
+  const body = {
+    username: document.getElementById('reg-username').value,
+    email: document.getElementById('reg-email').value,
+    password: document.getElementById('reg-password').value,
+    role: currentRole,
+  };
+  if (currentRole === 'restaurant') {
+    body.restaurant_name = document.getElementById('reg-resto-name').value;
+    body.address = document.getElementById('reg-address').value;
+    body.cuisine_type = document.getElementById('reg-cuisine').value;
+    body.lat = 35.6976; body.lng = -0.6337;
+  }
+  const err = document.getElementById('reg-error');
+  try {
+    const res = await fetch(`${API}/auth/register/`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      const msgs = Object.values(data).flat().join(' ');
+      err.textContent = msgs; err.style.display='block'; return;
+    }
+    state.token = data.access; state.user = data.user;
+    localStorage.setItem('sp_token', data.access);
+    localStorage.setItem('sp_user', JSON.stringify(data.user));
+    updateNavForAuth();
+    toast('Compte cree avec succes!', 'success');
+    showPage('dashboard');
+  } catch(e) { err.textContent = 'Erreur serveur'; err.style.display='block'; }
+}
+
+function doLogout() {
+  state.token = null; state.user = null;
+  localStorage.removeItem('sp_token'); localStorage.removeItem('sp_user');
+  updateNavForAuth();
+  showPage('home');
+  toast('Deconnecte', 'success');
+}
+
+function updateNavForAuth() {
+  const actions = document.getElementById('nav-actions');
+  const adminBtn = `<a href="admin.html" target="_blank" rel="noopener" style="padding:.5rem 1rem;border-radius:8px;font-size:.78rem;background:rgba(35,201,110,0.08);border:1px solid rgba(35,201,110,0.3);color:#23c96e;text-decoration:none;font-weight:600;white-space:nowrap;">Admin Panel</a>`;
+  if (state.user) {
+    const role_icon = state.user.role === 'restaurant' ? '[Restaurant]' : '[Consommateur]';
+    actions.innerHTML = `
+      <span style="color:var(--text-dim);font-size:.85rem">${role_icon} ${state.user.username}</span>
+      <button class="btn btn-primary btn-sm" onclick="showPage('dashboard')">Tableau de bord</button>
+      ${adminBtn}
+    `;
+  } else {
+    actions.innerHTML = `
+      <button class="btn btn-outline" onclick="showPage('auth')">Se connecter</button>
+      <button class="btn btn-primary" onclick="showPage('auth')">S'inscrire</button>
+      ${adminBtn}
+    `;
+  }
+}
+
+async function loadGlobalImpact() {
+  try {
+    const res = await fetch(`${API}/impact/`);
+    const data = await res.json();
+    if (document.getElementById('hero-meals')) document.getElementById('hero-meals').textContent = data.total_meals_saved || 0;
+    if (document.getElementById('hero-co2')) document.getElementById('hero-co2').textContent = data.total_co2_prevented_kg || 0;
+    if (document.getElementById('hero-water')) document.getElementById('hero-water').textContent = data.total_water_saved_liters || 0;
+    if (document.getElementById('hero-kg')) document.getElementById('hero-kg').textContent = data.total_kg_saved || 0;
+  } catch(e) {}
+}
+
+async function loadFeed() {
+  const cat = document.getElementById('filter-category')?.value || '';
+  const url = cat ? `${API}/offers/?category=${cat}` : `${API}/offers/`;
+  try {
+    const res = await fetch(url);
+    const offers = await res.json();
+    state.offers = offers;
+    const count = document.getElementById('feed-count');
+    if (count) count.textContent = `${offers.length} actives`;
+    renderOfferGrid('feed-grid', offers);
+  } catch(e) {
+    document.getElementById('feed-grid').innerHTML = '<div style="color:var(--text-dim);padding:2rem">Serveur non disponible (Django requis sur port 8000)</div>';
+  }
+}
+
+async function loadHomeOffers() {
+  try {
+    const res = await fetch(`${API}/offers/`);
+    const offers = await res.json();
+    state.offers = offers;
+    const c = document.getElementById('active-count');
+    if (c) c.textContent = `${offers.length} actives`;
+    renderOfferGrid('home-offers-grid', offers.slice(0,6));
+  } catch(e) {
+    const g = document.getElementById('home-offers-grid');
+    if (g) g.innerHTML = '<div style="color:var(--text-dim);padding:2rem;grid-column:1/-1">Serveur Django non disponible sur port 8000. <a href="admin.html" style="color:#23c96e">Voir le demo Admin &rarr;</a></div>';
+  }
+}
+
+function renderOfferGrid(containerId, offers) {
+  const grid = document.getElementById(containerId);
+  if (!grid) return;
+  if (!offers.length) {
+    grid.innerHTML = '<div style="color:var(--text-dim);padding:2rem;grid-column:1/-1">Aucune offre disponible pour le moment.</div>';
+    return;
+  }
+  grid.innerHTML = offers.map(o => offerCard(o)).join('');
+}
+
+function offerCard(o) {
+  const emoji = categoryEmoji(o.category);
+  const urgency = o.minutes_left <= 60 ? `&#9201; ${o.minutes_left}min restant` : `&#9201; ${Math.floor(o.minutes_left/60)}h restant`;
+  const urgencyClass = o.minutes_left <= 60 ? 'style="color:var(--red)"' : '';
+  return `<div class="offer-card" onclick="openOfferModal(${o.id})">
+    <div class="offer-card-img">
+      ${o.photo_url ? `<img src="${o.photo_url}" alt="${o.title}">` : `<span>${emoji}</span>`}
+      ${o.discount_percent > 0 ? `<div class="discount-badge">-${o.discount_percent}%</div>` : ''}
+      <div class="urgency-badge" ${urgencyClass}>${urgency}</div>
+    </div>
+    <div class="offer-card-body">
+      <div class="offer-card-title">${o.title}</div>
+      <div class="offer-card-resto">${o.restaurant_name}</div>
+      <div class="offer-card-footer">
+        <div class="price-block">
+          <span class="price-current">${o.current_price} DZD</span>
+          ${o.original_price != o.current_price ? `<span class="price-orig">${o.original_price} DZD</span>` : ''}
+        </div>
+        <span class="qty-badge">${o.quantity_remaining} restants</span>
+      </div>
+    </div>
+  </div>`;
+}
+
+function categoryEmoji(cat) {
+  const map = {'Traditionnel':'🍲','Italien':'🍕','Fast Food':'🍔','Boulangerie':'🥖','Vegetarien':'🥗','Fusion':'🍱'};
+  return map[cat] || '🍽️';
+}
+
+async function openOfferModal(id) {
+  const offer = state.offers.find(o => o.id === id) || await (await fetch(`${API}/offers/${id}/`)).json();
+  document.getElementById('modal-offer-title').textContent = offer.title;
+  const body = document.getElementById('modal-offer-body');
+  body.innerHTML = `
+    <div style="background:var(--dark2);border-radius:10px;padding:1.5rem;margin-bottom:1rem">
+      <div style="font-size:3rem;text-align:center;margin-bottom:.75rem">${categoryEmoji(offer.category)}</div>
+      <p style="color:var(--text-dim);font-size:.9rem;line-height:1.6">${offer.description || 'Surplus frais du jour'}</p>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1.25rem">
+      <div style="background:var(--card2);border-radius:8px;padding:.85rem;text-align:center">
+        <div style="font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:700;color:var(--green-light)">${offer.current_price} DZD</div>
+        <div style="font-size:.78rem;color:var(--text-dim)">Prix actuel</div>
+      </div>
+      <div style="background:var(--card2);border-radius:8px;padding:.85rem;text-align:center">
+        <div style="font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:700;color:var(--orange)">${offer.discount_percent}% off</div>
+        <div style="font-size:.78rem;color:var(--text-dim)">Reduction</div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:1.25rem;font-size:.88rem">
+      <span style="color:var(--text-dim)">${offer.restaurant_name}</span>
+      <span style="color:var(--text-dim)">${offer.minutes_left} min restants</span>
+    </div>
+    ${state.token && state.user?.role === 'consumer' ? `<button class="btn btn-primary" style="width:100%;padding:.85rem" onclick="reserveOffer(${offer.id})">Reserver maintenant</button>` : state.token ? '<p style="color:var(--text-dim);font-size:.85rem;text-align:center">Seuls les consommateurs peuvent reserver.</p>' : '<button class="btn btn-outline" style="width:100%" onclick="showPage(\'auth\')">Se connecter pour reserver</button>'}
+  `;
+  document.getElementById('offer-modal').classList.add('open');
+}
+
+async function reserveOffer(offerId) {
+  const res = await apiFetch('/reservations/', {
+    method:'POST',
+    body: JSON.stringify({offer: offerId, quantity:1})
+  });
+  if (!res) return;
+  if (res.ok) {
+    closeModal('offer-modal');
+    toast('Reservation confirmee! Impact enregistre.', 'success');
+    await loadGlobalImpact();
+    await loadHomeOffers();
+    loadFeed();
+  } else {
+    const d = await res.json();
+    toast(d.detail || 'Erreur lors de la reservation', 'error');
+  }
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function initMap() {
+  if (state.map) {
+    state.map.invalidateSize();
+    refreshMapMarkers();
+    return;
+  }
+  state.map = L.map('map').setView([35.6976, -0.6337], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(state.map);
+  refreshMapMarkers();
+}
+
+async function refreshMapMarkers() {
+  try {
+    const res = await fetch(`${API}/offers/`);
+    const offers = await res.json();
+    offers.forEach(o => {
+      if (o.lat && o.lng) {
+        L.marker([o.lat, o.lng])
+          .addTo(state.map)
+          .bindPopup(`<b>${o.title}</b><br>${o.restaurant_name}<br><span style="color:#23c96e">${o.current_price} DZD</span>`);
+      }
+    });
+  } catch(e) {}
+}
+
+async function loadLeaderboard() {
+  try {
+    const res = await fetch(`${API}/leaderboard/`);
+    const data = await res.json();
+    const container = document.getElementById('leaderboard-list');
+    if (!data.length) { container.innerHTML = '<div style="padding:2rem;color:var(--text-dim)">Aucune donnee disponible.</div>'; return; }
+    container.innerHTML = data.map((r, i) => {
+      const rankClass = i===0 ? 'gold' : i===1 ? 'silver' : i===2 ? 'bronze' : '';
+      return `<div class="leader-row">
+        <div class="leader-rank ${rankClass}">${i+1}</div>
+        <div class="leader-info">
+          <div class="leader-name">${r.name}</div>
+          <div class="leader-cuisine">${r.cuisine_type || ''} &bull; ${r.district || ''}</div>
+        </div>
+        <div class="leader-meals">${r.meals_saved || 0} repas</div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    document.getElementById('leaderboard-list').innerHTML = '<div style="padding:2rem;color:var(--text-dim)">Serveur non disponible.</div>';
+  }
+}
+
+async function loadDashboard() {
+  try {
+    const res = await apiFetch('/dashboard/');
+    if (!res) return;
+    const data = await res.json();
+    renderDashboard(data);
+  } catch(e) {}
+}
+
+function renderDashboard(data) {
+  const nameEl = document.getElementById('sidebar-user-name');
+  const roleEl = document.getElementById('sidebar-role-badge');
+  const nav = document.getElementById('sidebar-nav');
+  const content = document.getElementById('dashboard-content');
+
+  if (!state.user) return;
+  nameEl.textContent = state.user.username;
+  roleEl.textContent = state.user.role === 'restaurant' ? 'Espace Restaurant' : 'Espace Consommateur';
+
+  if (state.user.role === 'restaurant') {
+    nav.innerHTML = `
+      <div class="sidebar-item active" onclick="showDashSection('offers')">Mes offres</div>
+      <div class="sidebar-item" onclick="showDashSection('reservations')">Reservations</div>
+      <div class="sidebar-item" onclick="showDashSection('impact')">Mon impact</div>
+    `;
+    showDashSection('offers', data);
+  } else {
+    nav.innerHTML = `
+      <div class="sidebar-item active" onclick="showDashSection('my-reservations')">Mes reservations</div>
+      <div class="sidebar-item" onclick="showDashSection('my-impact')">Mon impact</div>
+    `;
+    showDashSection('my-reservations', data);
+  }
+}
+
+function showDashSection(section, data) {
+  document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+  const btn = document.querySelector(`.sidebar-item[onclick*="${section}"]`);
+  if (btn) btn.classList.add('active');
+  state.currentDashboardSection = section;
+  const content = document.getElementById('dashboard-content');
+  content.innerHTML = '<div style="color:var(--text-dim);padding:2rem">Chargement...</div>';
+  loadDashboardSection(section);
+}
+
+async function loadDashboardSection(section) {
+  const content = document.getElementById('dashboard-content');
+  try {
+    if (section === 'offers') {
+      const res = await apiFetch('/offers/mine/');
+      const offers = await res.json();
+      content.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem">
+          <h2 style="font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:700">Mes offres</h2>
+          <button class="btn btn-primary btn-sm" onclick="showAddOffer()">+ Nouvelle offre</button>
+        </div>
+        <div class="grid">${offers.map(o => offerCard(o)).join('')}</div>
+      `;
+    } else {
+      content.innerHTML = '<div style="color:var(--text-dim);padding:2rem">Section en cours de developpement.</div>';
+    }
+  } catch(e) {
+    content.innerHTML = '<div style="color:var(--text-dim);padding:2rem">Erreur de chargement.</div>';
+  }
+}
+
+function connectWebSocket() {
+  try {
+    const ws = new WebSocket('ws://127.0.0.1:8000/ws/impact/');
+    ws.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+      if (data.type === 'impact_update') loadGlobalImpact();
+    };
+    state.ws_impact = ws;
+  } catch(e) {}
+}
+
+function toast(msg, type='success') {
+  const container = document.getElementById('toasts');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span class="toast-icon">${type==='success' ? '&#10003;' : '&#9888;'}</span><span>${msg}</span>`;
+  container.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+</script>
+</body>
+</html>

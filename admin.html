@@ -1,0 +1,1478 @@
+<!DOCTYPE html>
+<html lang="fr" translate="no">
+<head>
+<meta charset="UTF-8">
+<meta name="google" content="notranslate">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SANAD &mdash; Admin Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+  // Force all fetch/API calls to point to Django port
+  const originalFetch = window.fetch;
+  window.fetch = function(url, options) {
+    if (typeof url === 'string' && url.includes(':5500')) {
+      url = url.replace(':5500', ':8000');
+    } else if (typeof url === 'string' && url.startsWith('/api/')) {
+      url = `http://127.0.0.1:8000${url}`;
+    }
+    return originalFetch(url, options);
+  };
+</script>
+
+<style>
+/* ===== DESIGN SYSTEM ===== */
+:root {
+  --color-bg: #060d09;
+  --color-bg-secondary: #0d1a12;
+  --color-surface: #111f17;
+  --color-surface-2: #162419;
+  --color-emerald: #23c96e;
+  --color-emerald-dim: #1a9e5c;
+  --color-emerald-deep: #0e5e36;
+  --color-orange: #f57c2b;
+  --color-orange-light: #ff9a47;
+  --color-red: #e84d4d;
+  --color-yellow: #f5c842;
+  --color-indigo: #818cf8;
+  --border-color: rgba(35, 201, 110, 0.14);
+  --border-color-strong: rgba(35, 201, 110, 0.28);
+  --text-primary: #d6edd9;
+  --text-secondary: #7a9e87;
+  --text-muted: #3e5e46;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --sidebar-width: 220px;
+  --topbar-height: 52px;
+  --shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(--color-bg); color: var(--text-primary); overflow: hidden; }
+
+/* ===== DASHBOARD SHELL ===== */
+#page-dashboard {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ===== SIDEBAR ===== */
+#dashboard-sidebar {
+  width: var(--sidebar-width);
+  background: var(--color-surface);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow-y: auto;
+  z-index: 10;
+}
+
+.sidebar-logo-block {
+  padding: 16px 14px 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.sidebar-brand-img {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--color-emerald-deep);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--color-emerald);
+  font-family: 'Syne', sans-serif;
+}
+
+.sidebar-brand-name {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 1rem;
+  color: var(--color-emerald);
+  letter-spacing: .04em;
+}
+
+.sidebar-brand-sub {
+  font-size: 0.58rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+/* ADMIN PANEL toggle */
+.admin-panel-toggle-row {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-panel-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--text-secondary);
+}
+
+/* Toggle Switch */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+  flex-shrink: 0;
+}
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background: var(--color-surface-2);
+  border-radius: 20px;
+  transition: background .25s;
+  border: 1px solid var(--border-color);
+}
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  height: 14px;
+  width: 14px;
+  left: 2px;
+  bottom: 2px;
+  background: var(--text-muted);
+  border-radius: 50%;
+  transition: transform .25s, background .25s;
+}
+.toggle-switch input:checked + .toggle-slider { background: var(--color-emerald-deep); border-color: var(--color-emerald-dim); }
+.toggle-switch input:checked + .toggle-slider::before { transform: translateX(16px); background: var(--color-emerald); }
+
+/* ===== SIDEBAR MENU ===== */
+.sidebar-section-label {
+  padding: 12px 14px 4px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--text-muted);
+}
+
+.sidebar-menu {
+  list-style: none;
+  padding: 4px 6px;
+}
+
+.sidebar-menu li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  transition: all .18s;
+  margin-bottom: 1px;
+  user-select: none;
+}
+
+.sidebar-menu li:hover {
+  background: rgba(35, 201, 110, 0.1);
+  color: var(--text-primary);
+}
+
+.sidebar-menu li.active {
+  background: rgba(35, 201, 110, 0.18);
+  color: var(--color-emerald);
+  font-weight: 600;
+}
+
+.sidebar-menu li .menu-icon {
+  font-size: 0.88rem;
+  width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+/* Profile footer */
+.sidebar-profile-footer {
+  margin-top: auto;
+  padding: 10px 14px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sidebar-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--color-emerald-deep);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--color-emerald);
+  flex-shrink: 0;
+}
+
+.sidebar-profile-info { overflow: hidden; }
+.sidebar-profile-name { font-size: 0.72rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sidebar-profile-role { font-size: 0.62rem; color: var(--text-muted); }
+
+/* ===== MAIN AREA ===== */
+#page-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ===== TOP BAR ===== */
+#topbar {
+  height: var(--topbar-height);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 18px;
+  flex-shrink: 0;
+  z-index: 5;
+}
+
+.page-title-block { flex: 1; }
+.page-title { font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 800; color: var(--text-primary); }
+.page-subtitle { font-size: 0.7rem; color: var(--text-muted); margin-top: 1px; }
+
+.topbar-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.topbar-select-wrap {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+}
+
+.topbar-select-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  white-space: nowrap;
+}
+
+.topbar-select {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 500;
+  outline: none;
+  cursor: pointer;
+  max-width: 200px;
+}
+
+.topbar-select option { background: var(--color-surface-2); }
+
+.topbar-sep { width: 1px; height: 20px; background: var(--border-color); }
+
+.status-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  font-size: 0.72rem;
+}
+
+.status-indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-indicator.live { background: var(--color-emerald); animation: pulse-dot 1.5s infinite; }
+.status-indicator.paused { background: var(--color-yellow); }
+@keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(1.4)} }
+
+.topbar-action-btn {
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: var(--color-surface-2);
+  color: var(--text-secondary);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: all .18s;
+  white-space: nowrap;
+}
+
+.topbar-action-btn:hover { border-color: var(--color-emerald-dim); color: var(--color-emerald); }
+.topbar-action-btn.accent { background: var(--color-emerald-deep); border-color: var(--color-emerald-dim); color: var(--color-emerald); }
+.topbar-action-btn.orange-btn { border-color: rgba(245,124,43,.4); color: var(--color-orange); }
+.topbar-action-btn.red-btn { border-color: rgba(232,77,77,.4); color: var(--color-red); }
+
+#sim-actions-group { display: flex; gap: 6px; }
+#sim-actions-group.disabled { opacity: .4; pointer-events: none; }
+
+/* ===== CONTENT AREA ===== */
+.main-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 20px;
+}
+
+/* ===== GRID SECTIONS ===== */
+.grid-section {
+  display: none;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* ===== KPI CARDS ===== */
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; }
+
+.kpi-card {
+  background: var(--color-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color .2s;
+}
+.kpi-card:hover { border-color: var(--border-color-strong); }
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--color-emerald-deep), var(--color-emerald));
+}
+
+.kpi-source { font-size: 0.6rem; color: var(--text-muted); font-family: 'Courier New', monospace; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kpi-value { font-family: 'Syne', sans-serif; font-size: 1.65rem; font-weight: 800; color: var(--text-primary); line-height: 1; margin-bottom: 4px; }
+.kpi-label { font-size: 0.7rem; color: var(--text-secondary); }
+.kpi-trend { font-size: 0.68rem; margin-top: 6px; display: flex; align-items: center; gap: 3px; }
+.kpi-trend.trend-up { color: var(--color-emerald); }
+.kpi-trend.trend-down { color: var(--color-red); }
+.kpi-extra { font-size: 0.7rem; color: var(--text-muted); margin-top: 6px; }
+
+/* ===== CHART PANELS ===== */
+.chart-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.panel-title { font-family: 'Syne', sans-serif; font-size: 0.88rem; font-weight: 700; color: var(--text-primary); }
+.panel-subtitle { font-size: 0.68rem; color: var(--text-muted); margin-top: 2px; }
+
+.panel-action-btn {
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: var(--color-surface-2);
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  transition: all .18s;
+}
+.panel-action-btn:hover { border-color: var(--color-emerald-dim); color: var(--color-emerald); }
+.panel-action-btn.primary-action { background: var(--color-emerald-deep); border-color: var(--color-emerald-dim); color: var(--color-emerald); }
+
+.chart-canvas-wrap { position: relative; height: 180px; }
+
+/* ===== TWO-COL GRID ===== */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+
+/* ===== TABLE ===== */
+.data-table-wrap {
+  background: var(--color-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.data-table-wrap table { width: 100%; border-collapse: collapse; }
+.data-table-wrap th {
+  padding: 9px 14px;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--text-muted);
+  background: var(--color-surface-2);
+  border-bottom: 1px solid var(--border-color);
+  font-weight: 700;
+  text-align: left;
+}
+.data-table-wrap td {
+  padding: 9px 14px;
+  font-size: 0.8rem;
+  border-bottom: 1px solid rgba(255,255,255,.03);
+  color: var(--text-primary);
+}
+.data-table-wrap tr:last-child td { border: none; }
+.data-table-wrap tr:hover td { background: rgba(35,201,110,.04); }
+
+/* ===== STATUS PILLS ===== */
+.status-pill-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: lowercase;
+}
+.status-pill-tag.available, .status-pill-tag.active, .status-pill-tag.confirmed, .status-pill-tag.saved { background: rgba(35,201,110,.15); color: var(--color-emerald); }
+.status-pill-tag.critical, .status-pill-tag.reserved { background: rgba(245,200,66,.12); color: var(--color-yellow); }
+.status-pill-tag.out_of_stock, .status-pill-tag.expired { background: rgba(232,77,77,.12); color: var(--color-red); }
+
+/* Badge */
+.badge { display: inline-block; padding: 2px 7px; border-radius: 5px; font-size: 0.65rem; font-weight: 600; background: var(--color-surface-2); color: var(--text-secondary); border: 1px solid var(--border-color); }
+.badge.green { background: rgba(35,201,110,.12); color: var(--color-emerald); border-color: rgba(35,201,110,.25); }
+
+/* ===== LEADERBOARD ===== */
+.leaderboard-list { display: flex; flex-direction: column; gap: 6px; }
+.leaderboard-row-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+}
+.leaderboard-rank-badge {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Syne', sans-serif; font-size: 0.82rem; font-weight: 800;
+  background: var(--color-surface); color: var(--text-muted);
+  flex-shrink: 0;
+}
+.leaderboard-rank-badge.rank-1 { background: rgba(255,215,0,.15); color: #ffd700; }
+.leaderboard-rank-badge.rank-2 { background: rgba(192,192,192,.12); color: #c0c0c0; }
+.leaderboard-rank-badge.rank-3 { background: rgba(205,127,50,.12); color: #cd7f32; }
+.leaderboard-details { flex: 1; }
+.leaderboard-title-name { font-size: 0.82rem; font-weight: 600; color: var(--text-primary); }
+.leaderboard-subtitle-tag { font-size: 0.68rem; color: var(--text-muted); }
+.leaderboard-impact-values { text-align: right; }
+.leaderboard-saved-counter { font-family: 'Syne', sans-serif; font-size: 0.88rem; font-weight: 700; color: var(--color-emerald); }
+.leaderboard-saved-kg { font-size: 0.66rem; color: var(--text-muted); }
+
+/* ===== PREDICTION CARD ===== */
+.prediction-card-item {
+  display: flex; align-items: center; gap: 14px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  margin-bottom: 8px;
+}
+.prediction-dish-title { font-size: 0.85rem; font-weight: 600; color: var(--text-primary); margin-bottom: 3px; }
+.prediction-date-sub { font-size: 0.68rem; color: var(--text-muted); }
+.prediction-stats-middle { flex: 1; text-align: center; }
+.prediction-qty-kg { font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 800; color: var(--text-primary); }
+.prediction-label-sub { font-size: 0.62rem; color: var(--text-muted); }
+.prediction-right-badge { text-align: right; }
+.risk-level-badge { display: inline-block; padding: 3px 9px; border-radius: 99px; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.risk-level-badge.high { background: rgba(232,77,77,.18); color: var(--color-red); }
+.risk-level-badge.medium { background: rgba(245,200,66,.15); color: var(--color-yellow); }
+.risk-level-badge.low { background: rgba(35,201,110,.15); color: var(--color-emerald); }
+.prediction-confidence { font-size: 0.65rem; color: var(--text-muted); margin-top: 4px; }
+
+/* ===== PROGRESS BAR ===== */
+.qs-bar { height: 6px; background: var(--color-surface-2); border-radius: 3px; overflow: hidden; margin-top: 5px; }
+.qs-bar-fill { height: 100%; background: var(--color-emerald); border-radius: 3px; transition: width .6s ease; }
+.qs-bar-fill.error { background: var(--color-red); }
+
+/* ===== GROWTH METRICS ===== */
+.growth-metrics-row { display: flex; gap: 12px; }
+.growth-metric { background: var(--color-surface-2); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 10px 14px; flex: 1; }
+.g-label { font-size: 0.65rem; color: var(--text-muted); display: block; margin-bottom: 4px; }
+.g-val { font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 800; color: var(--text-primary); }
+.g-val.text-success { color: var(--color-emerald); }
+.g-val.text-orange { color: var(--color-orange); }
+.g-val.text-indigo { color: var(--color-indigo); }
+
+/* ===== OFFER CARDS ===== */
+.offers-feed-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+.offer-card {
+  background: var(--color-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform .2s, border-color .2s;
+}
+.offer-card:hover { transform: translateY(-2px); border-color: var(--border-color-strong); }
+.offer-card-visual {
+  height: 100px;
+  background: linear-gradient(135deg, var(--color-emerald-deep), var(--color-bg-secondary));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.5rem; position: relative;
+}
+.discount-tag { position: absolute; top: 8px; right: 8px; background: var(--color-orange); color: #fff; font-size: 0.7rem; font-weight: 700; padding: 2px 6px; border-radius: 5px; }
+.time-left-tag { position: absolute; top: 8px; left: 8px; background: rgba(6,13,9,.85); color: var(--color-yellow); font-size: 0.65rem; padding: 2px 6px; border-radius: 5px; }
+.offer-card-content { padding: 10px; }
+.offer-title { font-family: 'Syne', sans-serif; font-size: 0.82rem; font-weight: 700; margin-bottom: 3px; }
+.offer-restaurant { font-size: 0.68rem; color: var(--text-secondary); margin-bottom: 8px; }
+.offer-card-footer { display: flex; align-items: center; justify-content: space-between; }
+.price-stack { display: flex; flex-direction: column; }
+.current-price { font-family: 'Syne', sans-serif; font-size: 0.9rem; font-weight: 700; color: var(--color-emerald); }
+.original-price { font-size: 0.65rem; color: var(--text-muted); text-decoration: line-through; }
+.qty-remaining { font-size: 0.65rem; background: rgba(35,201,110,.12); color: var(--color-emerald); padding: 2px 7px; border-radius: 99px; }
+
+.filter-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.filter-tab-btn { padding: 4px 12px; border-radius: 99px; border: 1px solid var(--border-color); background: var(--color-surface-2); color: var(--text-secondary); font-size: 0.72rem; cursor: pointer; transition: all .18s; font-family: 'DM Sans', sans-serif; }
+.filter-tab-btn:hover, .filter-tab-btn.active { background: rgba(35,201,110,.15); color: var(--color-emerald); border-color: rgba(35,201,110,.3); }
+
+/* ===== USER PROFILE ===== */
+.user-profile-header {
+  background: var(--color-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.user-big-avatar {
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  background: var(--color-emerald-deep);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Syne', sans-serif; font-size: 1.4rem; font-weight: 800;
+  color: var(--color-emerald);
+  flex-shrink: 0;
+}
+.user-profile-meta { flex: 1; }
+.user-profile-name { font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 700; }
+.user-category-select {
+  margin-top: 5px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.72rem;
+  border-radius: var(--radius-sm);
+  padding: 3px 8px;
+  cursor: pointer;
+  outline: none;
+}
+.user-badge-block { text-align: right; }
+.user-badge-level { font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 4px; }
+.user-badge-ratio { font-size: 0.65rem; color: var(--text-muted); }
+.user-badge-bar { height: 4px; background: var(--color-surface-2); border-radius: 2px; overflow: hidden; margin-top: 5px; width: 100px; }
+.user-badge-progress { height: 100%; background: var(--color-emerald); border-radius: 2px; transition: width .6s; }
+
+/* ===== BADGES GRID ===== */
+.badges-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.badge-card {
+  background: var(--color-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 14px 10px;
+  text-align: center;
+  opacity: 0.35;
+  transition: opacity .3s, border-color .3s;
+}
+.badge-card.unlocked { opacity: 1; border-color: rgba(35,201,110,.3); }
+.badge-icon { font-size: 1.6rem; margin-bottom: 6px; display: block; }
+.badge-name { font-size: 0.72rem; font-weight: 600; color: var(--text-primary); }
+.badge-desc { font-size: 0.62rem; color: var(--text-muted); margin-top: 2px; }
+
+/* ===== MAP ===== */
+.map-container { height: 380px; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border-color); }
+
+/* ===== LOG TERMINAL ===== */
+.log-terminal {
+  background: #020d05;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-family: 'Courier New', monospace;
+  font-size: 0.7rem;
+  height: 160px;
+  overflow-y: auto;
+  padding: 10px 14px;
+}
+.log-line { margin-bottom: 3px; line-height: 1.4; }
+.text-success { color: var(--color-emerald); }
+.text-red { color: var(--color-red); }
+.text-warn { color: var(--color-yellow); }
+.text-muted { color: var(--text-muted); }
+.text-orange { color: var(--color-orange); }
+
+/* ===== SQL INSPECTOR DRAWER ===== */
+#sql-drawer {
+  position: fixed;
+  right: -460px;
+  top: 0; bottom: 0;
+  width: 440px;
+  background: var(--color-surface);
+  border-left: 1px solid var(--border-color);
+  z-index: 200;
+  transition: right .3s ease;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  gap: 12px;
+  overflow-y: auto;
+}
+#sql-drawer.active { right: 0; }
+#sql-drawer-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.5);
+  z-index: 199;
+  display: none;
+}
+#sql-drawer-backdrop.active { display: block; }
+#drawer-title { font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700; }
+#drawer-subtitle { font-size: 0.72rem; color: var(--text-muted); }
+.drawer-code-block {
+  background: #020d05;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.68rem;
+  color: var(--color-emerald);
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+.drawer-section-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); }
+#drawer-explanation { font-size: 0.78rem; color: var(--text-secondary); line-height: 1.6; }
+
+/* ===== MODALS ===== */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.7);
+  backdrop-filter: blur(4px);
+  z-index: 500;
+  display: none;
+  place-items: center;
+}
+.modal-overlay.open { display: grid; }
+.modal-box {
+  background: var(--color-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 22px;
+  max-width: 480px;
+  width: 90%;
+  max-height: 88vh;
+  overflow-y: auto;
+  animation: fadeUp .22s ease;
+}
+@keyframes fadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+.modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+.modal-title { font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700; }
+.modal-close-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.2rem; line-height: 1; }
+.form-group { margin-bottom: 12px; }
+.form-group label { display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 4px; font-weight: 500; }
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%; padding: 8px 12px; border-radius: var(--radius-sm);
+  background: var(--color-surface-2); border: 1.5px solid var(--border-color);
+  color: var(--text-primary); font-size: 0.85rem; font-family: 'DM Sans', sans-serif;
+  outline: none; transition: border .18s;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--color-emerald-dim); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* ===== TOAST ===== */
+#toasts { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 6px; }
+.toast-message {
+  background: var(--color-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 10px 16px;
+  display: flex; align-items: center; gap: 8px;
+  font-size: 0.82rem;
+  min-width: 260px;
+  box-shadow: var(--shadow);
+  animation: slideInRight .3s ease;
+}
+.toast-message.success { border-color: rgba(35,201,110,.4); }
+.toast-message.error { border-color: rgba(232,77,77,.4); }
+@keyframes slideInRight { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--color-bg); }
+::-webkit-scrollbar-thumb { background: var(--color-surface-2); border-radius: 3px; }
+
+/* ===== BACK LINK ===== */
+.back-to-home {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 0.7rem; color: var(--text-muted); text-decoration: none;
+  padding: 4px 10px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: var(--color-surface-2);
+  transition: all .18s;
+  white-space: nowrap;
+}
+.back-to-home:hover { color: var(--color-emerald); border-color: rgba(35,201,110,.3); }
+</style>
+</head>
+<body>
+
+<!-- Toast Container -->
+<div id="toasts"></div>
+
+<!-- SQL Drawer Backdrop -->
+<div id="sql-drawer-backdrop" onclick="closeSqlDrawer()"></div>
+
+<!-- SQL Inspector Drawer -->
+<div id="sql-drawer">
+  <div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+      <span id="drawer-title" style="font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;"></span>
+      <button onclick="closeSqlDrawer()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1.1rem;">&times;</button>
+    </div>
+    <div id="drawer-subtitle" class="drawer-section-label" style="margin-bottom:12px;"></div>
+  </div>
+  <div>
+    <div class="drawer-section-label" style="margin-bottom:6px;">SCHEMA DDL</div>
+    <pre id="drawer-schema" class="drawer-code-block"></pre>
+  </div>
+  <div>
+    <div class="drawer-section-label" style="margin-bottom:6px;">LIVE QUERY</div>
+    <pre id="drawer-query" class="drawer-code-block" style="color:var(--color-indigo);"></pre>
+  </div>
+  <div>
+    <div class="drawer-section-label" style="margin-bottom:6px;">DATA ENGINEERING RATIONALE</div>
+    <div id="drawer-explanation"></div>
+  </div>
+</div>
+
+<!-- Modal: Publish Offer -->
+<div class="modal-overlay" id="modal-publish-offer">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">Publish Surplus Offer</span>
+      <button class="modal-close-btn" onclick="closeModal('modal-publish-offer')">&times;</button>
+    </div>
+    <div class="form-group"><label>Offer Title</label><input type="text" id="form-publish-title" placeholder="Ex: 3 Croissants Box"></div>
+    <div class="form-group"><label>Description (optional)</label><textarea id="form-publish-desc" rows="2" placeholder="Brief description..."></textarea></div>
+    <div class="form-row">
+      <div class="form-group"><label>Original Price (DZD)</label><input type="number" id="form-publish-price-orig" placeholder="500"></div>
+      <div class="form-group"><label>Sale Price (DZD)</label><input type="number" id="form-publish-price-sale" placeholder="200"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Quantity (units)</label><input type="number" id="form-publish-qty" value="5" min="1"></div>
+      <div class="form-group">
+        <label>Category</label>
+        <select id="form-publish-category">
+          <option>Bakery &amp; Bread</option>
+          <option>Prepared Meals</option>
+          <option>Produce</option>
+          <option>Dairy &amp; Eggs</option>
+          <option>Meat &amp; Fish</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Expires in</label>
+      <select id="form-publish-expires">
+        <option value="1">1 hour</option>
+        <option value="2" selected>2 hours</option>
+        <option value="3">3 hours</option>
+        <option value="6">6 hours</option>
+      </select>
+    </div>
+    <button onclick="submitNewOffer()" style="width:100%;padding:10px;background:var(--color-emerald-dim);border:none;color:#fff;border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer;margin-top:6px;">Publish Offer</button>
+  </div>
+</div>
+
+<!-- Modal: Claim Offer -->
+<div class="modal-overlay" id="modal-claim-offer">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">Claim Surplus Item</span>
+      <button class="modal-close-btn" onclick="closeModal('modal-claim-offer')">&times;</button>
+    </div>
+    <div id="claim-modal-body"></div>
+  </div>
+</div>
+
+<!-- ===== DASHBOARD ===== -->
+<div id="page-dashboard">
+
+  <!-- SIDEBAR -->
+  <aside id="dashboard-sidebar">
+
+    <!-- Logo -->
+    <div class="sidebar-logo-block">
+      <div class="sidebar-brand">
+        <div class="sidebar-brand-img">S</div>
+        <div>
+          <div class="sidebar-brand-name">SANAD.</div>
+        </div>
+      </div>
+      <div class="sidebar-brand-sub">Food Redistribution</div>
+    </div>
+
+    <!-- ADMIN PANEL Toggle -->
+    <div class="admin-panel-toggle-row">
+      <span class="admin-panel-label">Admin Panel</span>
+      <label class="toggle-switch">
+        <input type="checkbox" id="demo-toggle" checked onchange="toggleAdminSidebar(this)">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <!-- Admin Menu -->
+    <div id="sidebar-menu-admin">
+      <div class="sidebar-section-label">Global View</div>
+      <ul class="sidebar-menu">
+        <li data-section="admin-overview" class="active" onclick="switchSection('admin-overview')">
+          <span class="menu-icon">&#9635;</span> Global KPIs &amp; Overview
+        </li>
+        <li data-section="admin-social" onclick="switchSection('admin-social')">
+          <span class="menu-icon">&#128101;</span> Social Impact Analytics
+        </li>
+        <li data-section="admin-business" onclick="switchSection('admin-business')">
+          <span class="menu-icon">&#128202;</span> Business Intelligence
+        </li>
+        <li data-section="admin-heatmap" onclick="switchSection('admin-heatmap')">
+          <span class="menu-icon">&#128205;</span> Redistribution Heatmap
+        </li>
+        <li data-section="admin-predictions" onclick="switchSection('admin-predictions')">
+          <span class="menu-icon">&#129302;</span> AI Predictions &amp; Surplus
+        </li>
+        <li data-section="admin-telemetry" onclick="switchSection('admin-telemetry')">
+          <span class="menu-icon">&#128268;</span> System Telemetry &amp; DQ
+        </li>
+      </ul>
+    </div>
+
+    <!-- Business Menu -->
+    <div id="sidebar-menu-business" style="display:none;">
+      <div class="sidebar-section-label">Merchant Tools</div>
+      <ul class="sidebar-menu">
+        <li data-section="business-impact" onclick="switchSection('business-impact')">
+          <span class="menu-icon">&#127807;</span> My Ecological Impact
+        </li>
+        <li data-section="business-offers" onclick="switchSection('business-offers')">
+          <span class="menu-icon">&#128721;</span> Manage Surplus Offers
+        </li>
+        <li data-section="business-reservations" onclick="switchSection('business-reservations')">
+          <span class="menu-icon">&#128197;</span> Reservations Inflow
+        </li>
+        <li data-section="business-analytics" onclick="switchSection('business-analytics')">
+          <span class="menu-icon">&#128200;</span> Waste Analytics Graphs
+        </li>
+        <li data-section="business-recom" onclick="switchSection('business-recom')">
+          <span class="menu-icon">&#129302;</span> AI Action Suggestions
+        </li>
+        <li data-section="business-revenue" onclick="switchSection('business-revenue')">
+          <span class="menu-icon">&#128181;</span> Financial Metrics
+        </li>
+      </ul>
+    </div>
+
+    <!-- User Menu -->
+    <div id="sidebar-menu-user" style="display:none;">
+      <div class="sidebar-section-label">My Portal</div>
+      <ul class="sidebar-menu">
+        <li data-section="user-profile" onclick="switchSection('user-profile')">
+          <span class="menu-icon">&#128100;</span> My Impact Profile
+        </li>
+        <li data-section="user-feed" onclick="switchSection('user-feed')">
+          <span class="menu-icon">&#127869;</span> Browse Surplus Feed
+        </li>
+        <li data-section="user-map" onclick="switchSection('user-map')">
+          <span class="menu-icon">&#128205;</span> Geographic Map View
+        </li>
+        <li data-section="user-leaderboard" onclick="switchSection('user-leaderboard')">
+          <span class="menu-icon">&#127942;</span> Top Restaurants
+        </li>
+      </ul>
+    </div>
+
+    <!-- Profile Footer -->
+    <div class="sidebar-profile-footer">
+      <div class="sidebar-avatar" id="sidebar-role-avatar">AD</div>
+      <div class="sidebar-profile-info">
+        <div class="sidebar-profile-name" id="sidebar-profile-name">Admin Account</div>
+        <div class="sidebar-profile-role" id="sidebar-profile-role">Platform Manager</div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- MAIN AREA -->
+  <div id="page-main">
+
+    <!-- TOP BAR -->
+    <div id="topbar">
+      <div class="page-title-block">
+        <div class="page-title" id="page-title">Sanad Admin Dashboard</div>
+        <div class="page-subtitle" id="page-subtitle">Vue d'ensemble globale de toute la plateforme en temps r&#233;el</div>
+      </div>
+
+      <div class="topbar-controls">
+        <!-- Role Selector -->
+        <div class="topbar-select-wrap">
+          <span class="topbar-select-label">ACT AS ROLE:</span>
+          <select class="topbar-select" id="role-selector" onchange="handleRoleChange()">
+            <option value="admin">1. ADMIN DASHBOARD</option>
+            <option value="business">2. BUSINESS DASHBOARD (Merchant)</option>
+            <option value="user">3. USER IMPACT PROFILE (Beneficiary)</option>
+          </select>
+        </div>
+
+        <!-- Merchant Selector -->
+        <div class="topbar-select-wrap" id="merchant-selector-container" style="display:none;">
+          <span class="topbar-select-label">STORE:</span>
+          <select class="topbar-select" id="merchant-selector" onchange="handleMerchantChange()" style="max-width:200px;"></select>
+        </div>
+
+        <div class="topbar-select-wrap" id="beneficiary-selector-container" style="display:none;">
+          <span class="topbar-select-label">PROFILE:</span>
+          <select class="topbar-select" id="beneficiary-selector" onchange="handleBeneficiaryChange()">
+            <option value="u1">Mokhtar (Homeless / SDF)</option>
+            <option value="u2">Amine (Student)</option>
+            <option value="u3">Nour (Low Income)</option>
+            <option value="u4">Kenzi (Other)</option>
+            <option value="u5">Yasmine (Retraitée)</option>
+            <option value="u6">Samir (Chômeur)</option>
+            <option value="u7">Lina (Étudiante)</option>
+            <option value="u8">Rachid (Invalide)</option>
+          </select>
+        </div>
+
+        <div class="topbar-sep"></div>
+
+        <!-- Sim Status -->
+        <div class="status-pill">
+          <span class="status-indicator live" id="live-indicator"></span>
+          <span id="status-label" style="font-size:0.72rem;color:var(--text-secondary);">Sim Streaming</span>
+        </div>
+
+        <div class="topbar-sep"></div>
+
+        <!-- Action Buttons -->
+        <div id="sim-actions-group">
+          <button class="topbar-action-btn accent" onclick="simulateNewListing()">+ Offre</button>
+          <button class="topbar-action-btn orange-btn" onclick="simulateAutoReservation()">&#9650; Spike</button>
+          <button class="topbar-action-btn red-btn" onclick="simulateSyncPulse()">&#128308; DG Circul.</button>
+        </div>
+
+        <div class="topbar-sep"></div>
+        <a href="index.html" class="back-to-home">&#8592; Accueil</a>
+      </div>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="main-content">
+
+      <!-- ============================================================
+           ADMIN: OVERVIEW
+      ============================================================ -->
+      <div class="grid-section" id="section-admin-overview" style="display:flex;">
+
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-source">v_executive_impact.meta_meals_saved</div>
+            <div class="kpi-value" id="admin-kpi-meals">8</div>
+            <div class="kpi-label">Total Meals Saved</div>
+            <div class="kpi-trend trend-up" id="admin-kpi-meals-trend">&#9650; 12%</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-source">v_executive_impact.co2_prevented_kg</div>
+            <div class="kpi-value" id="admin-kpi-co2">58.0 kg</div>
+            <div class="kpi-label">CO&#8322; Avoided</div>
+            <div class="kpi-trend trend-up">&#9650; 8.4%</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-source">formula: kg_saved &times; 1000L</div>
+            <div class="kpi-value" id="admin-kpi-water">23200 L</div>
+            <div class="kpi-label">Water Conserved</div>
+            <div class="kpi-trend trend-up">&#9650; 9.2%</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-source">v_executive_impact.economic_value</div>
+            <div class="kpi-value" id="admin-kpi-economy">1164 DZD</div>
+            <div class="kpi-label">Economic Value Saved</div>
+            <div class="kpi-trend trend-up">&#9650; 14.7%</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-source">SELECT COUNT(*) FROM partners</div>
+            <div class="kpi-value" id="admin-kpi-merchants">5</div>
+            <div class="kpi-label">Registered Commerce</div>
+            <div class="kpi-extra">Active Businesses</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-source">SELECT COUNT(*) FROM users</div>
+            <div class="kpi-value" id="admin-kpi-consumers">4</div>
+            <div class="kpi-label">Registered Users</div>
+            <div class="kpi-extra">Claiming Beneficiaries</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-source">SELECT COUNT(*) WHERE active</div>
+            <div class="kpi-value" id="admin-kpi-offers">4</div>
+            <div class="kpi-label">Active Offers</div>
+            <div class="kpi-extra">In-live inventory</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-source">v_waste_impact[price.set]</div>
+            <div class="kpi-value" id="admin-kpi-rescuerate">45.5%</div>
+            <div class="kpi-label">Global Rescue Rate</div>
+            <div class="kpi-trend trend-down" id="admin-kpi-rate-trend">&#9660; Moderate</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ============================================================
+           ADMIN: SOCIAL IMPACT
+      ============================================================ -->
+      <div class="grid-section" id="section-admin-social">
+        <div class="panel-header" style="margin-bottom:0;">
+          <div>
+            <div class="panel-title">Social Impact Analytics</div>
+            <div class="panel-subtitle">Beneficiary claim distribution &amp; recovery metrics by demographic</div>
+          </div>
+          <button class="panel-action-btn" onclick="openSqlInspector('pipeline_telemetry')">View SQL Logic</button>
+        </div>
+        <div class="two-col">
+          <div class="chart-panel">
+            <div class="panel-header">
+              <div><div class="panel-title">Claim Distribution by Profile</div><div class="panel-subtitle">Beneficiary demographic breakdown</div></div>
+            </div>
+            <div class="chart-canvas-wrap"><canvas id="admin-chart-social-pie"></canvas></div>
+          </div>
+          <div class="chart-panel">
+            <div class="panel-header">
+              <div><div class="panel-title">Recovery Rate by Category</div><div class="panel-subtitle">Percentage of successful redistribution</div></div>
+            </div>
+            <div class="chart-canvas-wrap"><canvas id="admin-chart-social-bar"></canvas></div>
+          </div>
+        </div>
+        <div class="chart-panel">
+          <div class="panel-header">
+            <div><div class="panel-title">7-Day Surplus Timeline</div><div class="panel-subtitle">Food surplus created vs. claimed over the last week</div></div>
+          </div>
+          <div class="chart-canvas-wrap" style="height:200px;"><canvas id="admin-chart-social-timeline"></canvas></div>
+        </div>
+      </div>
+
+      <!-- ============================================================
+           ADMIN: BUSINESS INTELLIGENCE
+      ============================================================ -->
+      <div class="grid-section" id="section-admin-business">
+        <div class="panel-header" style="margin-bottom:0;">
+          <div><div class="panel-title">Business Intelligence</div><div class="panel-subtitle">Category-level surplus analytics with financial performance metrics</div></div>
+          <button class="panel-action-btn" onclick="openSqlInspector('database_analytics')">View Schema</button>
+        </div>
+        <div class="data-table-wrap">
+          <table>
+            <thead><tr><th>Category</th><th>Active Offers</th><th>Kg Saved</th><th>CO&#8322; (kg)</th><th>Revenue (DZD)</th><th>Rescue Rate</th></tr></thead>
+            <tbody id="admin-business-table-body"></tbody>
+          </table>
+        </div>
+        <div class="chart-panel">
+          <div class="panel-header"><div><div class="panel-title">Top Store Leaderboard</div><div class="panel-subtitle">Ranked by meals saved &amp; kg redirected</div></div></div>
+          <div class="leaderboard-list" id="admin-leaderboard-list"></div>
+        </div>
+      </div>
+
+      <!-- ============================================================
+           ADMIN: HEATMAP
+      ============================================================ -->
+      <div class="grid-section" id="section-admin-heatmap">
+        <div class="panel-header" style="margin-bottom:0;">
+          <div><div class="panel-title">Redistribution Heatmap</div><div class="panel-subtitle">Geographic distribution of active surplus offers &amp; waste zones (Oran, Algeria)</div></div>
+        </div>
+        <div class="map-container" id="admin-heatmap-container"></div>
+      </div>
+
+      <!-- ============================================================
+           ADMIN: AI PREDICTIONS
+      ============================================================ -->
+      <div class="grid-section" id="section-admin-predictions">
+        <div class="panel-header" style="margin-bottom:0;">
+          <div><div class="panel-title">AI Surplus Predictions</div><div class="panel-subtitle">ML forecasts based on historical waste patterns per store</div></div>
+        </div>
+        <div id="admin-predictions-list"></div>
+      </div>
+
+      <!-- ============================================================
+           ADMIN: TELEMETRY & DQ
+      ============================================================ -->
+      <div class="grid-section" id="section-admin-telemetry">
+        <div class="panel-header" style="margin-bottom:0;">
+          <div><div class="panel-title">System Telemetry &amp; Data Quality</div><div class="panel-subtitle">Real-time pipeline health, database sizing, and data integrity guardrails</div></div>
+          <button class="panel-action-btn primary-action" onclick="openSqlInspector('data_quality')">DQ Inspector</button>
+        </div>
+        <div class="three-col">
+          <div class="chart-panel">
+            <div class="panel-title" style="margin-bottom:12px;">Pipeline Metrics</div>
+            <div class="growth-metrics-row" style="flex-direction:column;gap:8px;">
+              <div class="growth-metric"><span class="g-label">Events Ingested</span><span class="g-val" id="tel-events">1420</span></div>
+              <div class="growth-metric"><span class="g-label">Success Rate</span><span class="g-val text-success" id="tel-success">100.00%</span></div>
+              <div class="growth-metric"><span class="g-label">Avg Latency</span><span class="g-val" id="tel-latency">42 ms</span></div>
+              <div class="growth-metric"><span class="g-label">Active Connections</span><span class="g-val text-indigo" id="tel-connections">14 / 50</span></div>
+            </div>
+          </div>
+          <div class="chart-panel">
+            <div class="panel-title" style="margin-bottom:12px;">Database Catalog</div>
+            <div style="display:flex;flex-direction:column;gap:6px;font-size:0.75rem;">
+              <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border-color);"><span style="color:var(--text-muted);">public.users</span><span class="badge green" id="db-users-rows">4 rows</span></div>
+              <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border-color);"><span style="color:var(--text-muted);">public.restaurants</span><span class="badge green" id="db-restaurants-rows">5 rows</span></div>
+              <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border-color);"><span style="color:var(--text-muted);">public.offers</span><span class="badge green" id="db-offers-rows">5 rows</span></div>
+              <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border-color);"><span style="color:var(--text-muted);">public.reservations</span><span class="badge green" id="db-reservations-rows">3 rows</span></div>
+              <div style="display:flex;justify-content:space-between;padding:6px 0;"><span style="color:var(--text-muted);">v_executive_impact</span><span class="badge green" id="db-impact-rows">3 rows</span></div>
+              <div style="margin-top:8px;color:var(--text-muted);font-size:0.68rem;">Total size: <strong id="db-size">14.21 MB</strong></div>
+            </div>
+          </div>
+          <div class="chart-panel">
+            <div class="panel-title" style="margin-bottom:12px;">Data Quality Score</div>
+            <div style="text-align:center;margin-bottom:12px;">
+              <div class="g-val text-success" id="dq-score">100%</div>
+              <div style="font-size:0.65rem;color:var(--text-muted);margin-top:4px;" id="dq-score-label">All constraint assertions passed</div>
+              <div class="qs-bar"><div class="qs-bar-fill" id="dq-bar-fill" style="width:100%;"></div></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:5px;font-size:0.72rem;">
+              <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted);">Null Violations</span><span id="dq-nulls">0</span></div>
+              <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted);">Duplicate Rows</span><span id="dq-duplicates">0</span></div>
+              <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted);">Orphaned Records</span><span id="dq-orphans">0</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="chart-panel">
+          <div class="panel-title" style="margin-bottom:10px;">Live Pipeline Terminal</div>
+          <div class="log-terminal" id="log-body"></div>
+        </div>
+      </div>
+
+      <!-- ============================================================
+           BUSINESS: ECOLOGICAL IMPACT
+      ============================================================ -->
+      <div class="grid-section" id="section-business-impact">
+        <div class="panel-header" style="margin-bottom:0;">
+          <div><div class="panel-title">Store Ecological Achievements</div><div class="panel-subtitle">Environmental KPIs for this specific branch</div></div>
+          <button class="panel-action-btn primary-action">DIRECT IMPACT METRICS</button>
+        </div>
+        <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);">
+          <div class="kpi-card">
+            <div class="kpi-source">Equivalent to total claimed units</div>
+            <div class="kpi-value" id="business-kpi-meals">2</div>
+            <div class="kpi-label">Meals Redistributed</div>
+            <div class="kpi-trend trend-up">&#9650; Active</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-source">GHG emissions avoided</div>
+            <div class="kpi-value" id="business-kpi-co2">8.0 kg</div>
+            <div class="kpi-label">CO&#8322; Avoided</div>
+            <div class="kpi-trend trend-up">&#9650; 7.5 kg/kg</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-source">Agriculture water saved</div>
+            <div class="kpi-value" id="business-kpi-water">3200 L</div>
+            <div class="kpi-label">Water Conserved</div>
+            <div class="kpi-trend trend-up">&#9650; 1000 L/kg</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-source">Valued by markdown differentials</div>
+            <div class="kpi-value" id="business-kpi-value">64 DZD</div>
+            <div class="kpi-label">Avoided Loss (Financial)</div>
+            <div class="kpi-trend trend-up">&#9650; Proportional</div>
+          </div>
+        </div>
+        <!-- Eco Impact Summary -->
+        <div class="chart-panel">
+          <div class="panel-header">
+            <div><div class="panel-title">&#127807; MERCHANT ECO-IMPACT SUMMARY &mdash; LIVE DATA</div></div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;text-align:center;">
+            <div><div style="font-size:1.8rem;margin-bottom:6px;">&#127869;</div><div style="font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;color:var(--color-emerald);" id="business-kpi-meals-big">7</div><div style="font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;">Repas Sauves</div></div>
+            <div><div style="font-size:1.8rem;margin-bottom:6px;">&#128204;</div><div style="font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;color:var(--color-indigo);" id="business-kpi-co2-big">36.3</div><div style="font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;">kg CO&#8322; Evite</div></div>
+            <div><div style="font-size:1.8rem;margin-bottom:6px;">&#128167;</div><div style="font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;color:#60c8ff;" id="business-kpi-water-big">14 500</div><div style="font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;">L d'eau Economises</div></div>
+            <div><div style="font-size:1.8rem;margin-bottom:6px;">&#128176;</div><div style="font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;color:var(--color-yellow);" id="business-kpi-econ-big">1100</div><div style="font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;">DZD Valeur Recuperee</div></div>
+          </div>
+        </div>
+        <!-- Green Equivalencies -->
+        <div class="chart-panel">
+          <div class="panel-title" style="margin-bottom:12px;">Green Equivalencies Index</div>
+          <div style="display:flex;flex-direction:column;gap:10px;font-size:0.85rem;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span style="font-size:1.4rem;">&#128663;</span>
+              <div><strong style="color:var(--color-emerald);" id="business-equiv-car">38 km</strong> of automobile travel saved<br><span style="font-size:0.7rem;color:var(--text-muted);">Using EPA standard of 190g CO&#8322; emitted per vehicle-kilometer</span></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span style="font-size:1.4rem;">&#128703;</span>
+              <div><strong style="color:var(--color-emerald);" id="business-equiv-showers">63 cycles</strong> of domestic shower cycles saved<br><span style="font-size:0.7rem;color:var(--text-muted);">Based on an average shower of 60L water per cycle</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Business: Surplus Offers -->
+      <div class="grid-section" id="section-business-offers">
+        <div class="panel-header" style="margin-bottom:0;">
+          <div><div class="panel-title">Manage Surplus Offers</div><div class="panel-subtitle">Current active listings for this store</div></div>
+          <button class="panel-action-btn primary-action" onclick="openPublishModal()">+ Publish Offer</button>
+        </div>
+        <div class="data-table-wrap">
+          <table>
+            <thead><tr><th>Title</th><th>Category</th><th>Original Price</th><th>Sale Price</th><th>Quantity</th><th>Status</th><th>Expiry</th></tr></thead>
+            <tbody id="business-offers-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Business: Reservations -->
+      <div class="grid-section" id="section-business-reservations">
+        <div class="panel-header" style="margin-bottom:0;">
+          <div><div class="panel-title">Reservations Inflow</div><div class="panel-subtitle">Beneficiary claims received for this store's listings</div></div>
+        </div>
+        <div class="data-table-wrap">
+          <table>
+            <thead><tr><th>Beneficiary</th><th>Listing Claimed</th><th>Quantity</th><th>Status</th><th>Date</th></tr></thead>
+            <tbody id="business-reservations-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Business: Waste Analytics -->
+      <div class="grid-section" id="section-business-analytics">
+        <div class="panel-header" style="margin-bottom:0;">
+          <div><div class="panel-title">Waste Analytics Graphs</div><div class="panel-subtitle">Temporal breakdown of surplus generation patterns</div></div>
+        </div>
+        <div class="two-col">
+          <div class="chart-panel">
+            <div class="panel-header"><div><div class="panel-title">Daily Waste Volume (kg)</div><div class="panel-subtitle">This week by day</div></div></div>
+            <div class="chart-canvas-wrap"><canvas id="business-chart-waste-day"></canvas></div>
+          </div>
+          <div class="chart-panel">
+            <div class="panel-header"><div><div class="panel-title">Hourly Surplus Release Count</div><div class="panel-subtitle">Peak listing hours</div></div></div>
+            <div class="chart-canvas-wrap"><canvas id="business-chart-waste-hour"></canvas></div>
+          </div>
+        </div>
+        <div class="chart-panel">
+          <div class="panel-header"><div><div class="panel-title">Waste by Product Category</div><div class="panel-subtitle">Share of total surplus volume</div></div></div>
+          <div class="chart-canvas-wrap"><canvas id="business-chart-waste-products"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Business: AI Recommendations -->
+      <div class="grid-section" id="section-business-recom">
+        <div class="panel-header" style="margin-bottom:0;">
+          <div><div class="panel-title">AI Action Suggestions</div><div class="panel-subtitle">ML-powered surplus prevention recommendations for this branch</div></div>
+        </div>
+        <div class="chart-panel">
+          <div style="display:flex;align-items:center;gap:14px;padding:10px 0;">
+            <span style="font-size:2rem;">&#129302;</span>
+            <div>
+              <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:4px;">HIGH RISK ITEM PREDICTED TOMORROW</div>
+              <div style="font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;" id="recom-item-name">Traditional Sourdough Loaf</div>
+              <div style="font-size:0.78rem;color:var(--text-secondary);margin-top:4px;">Recommend listing as surplus offer 3-4h before closing time. Estimated 6-8 kg risk of disposal.</div>
+            </div>
+            <button class="panel-action-btn primary-action" onclick="openPublishModal()" style="flex-shrink:0;">Create Offer Now</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Business: Revenue -->
+      <div class="grid-section" id="section-business-revenue">
+        <div class="panel-header" style="margin-bottom:0;">
+          <div><div class="panel-title">Financial Metrics</div><div class="panel-subtitle">Capital recovery vs. disposal costs averted</div></div>
+        </div>
+        <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);">
+          <div class="kpi-card">
+            <div class="kpi-source">Inventory at full price</div>
+            <div class="kpi-value" id="business-rev-initial">--</div>
+            <div class="kpi-label">Original Inventory Value</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-source">Actual sale revenue from surplus</div>
+            <div class="kpi-value text-success" id="business-rev-recovered">--</div>
+            <div class="kpi-label">Capital Recovered</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-source">Landfill tax equivalent</div>
+            <div class="kpi-value" style="color:var(--color-orange);" id="business-rev-avoided">--</div>
+            <div class="kpi-label">Disposal Costs Averted</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============================================================
+           USER: MY IMPACT PROFILE
+      ============================================================ -->
+      <div class="grid-section" id="section-user-profile">
+        <div class="panel-header" style="margin-bottom:0;">
+          <div><div class="panel-title">Beneficiary Environmental Impact Record</div></div>
+          <button class="panel-action-btn primary-action">PERSONAL SCOREBOARD</button>
+        </div>
+
+        <div class="user-profile-header">
+          <div class="user-big-avatar" id="user-avatar-text">M</div>
+          <div class="user-profile-meta">
+            <div class="user-profile-name" id="user-name-text">Mokhtar</div>
+            <select class="user-category-select" id="user-category-select" onchange="handleUserCategoryChange()">
+              <option value="Homeless">Homeless / SDF Profile</option>
+              <option value="Student">Student Profile</option>
+              <option value="Low Income">Low Income Profile</option>
+              <option value="Other">Other Profile</option>
+            </select>
+          </div>
+          <div class="user-badge-block">
+            <div class="user-badge-level" id="user-badge-level">Rank: Eco Beginner</div>
+            <div class="user-badge-ratio" id="user-badge-ratio">4 / 5 Claims</div>
+            <div class="user-badge-bar"><div class="user-badge-progress" id="user-badge-progress" style="width:80%;"></div></div>
+          </div>
+        </div>
+
+        <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);">
+          <div class="kpi-card">
+            <div class="kpi-source">Total items successfully claimed</div>
+            <div class="kpi-value" id="user-kpi-meals">4</div>
+            <div class="kpi-label">Saved Meals Rescued</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-source">Original minus markdown average</div>
+            <div class="kpi-value" id="user-kpi-savings">800 DZD</div>
+            <div class="kpi-label">Financial Savings</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-source">kg from claimed food footprint</div>
+            <div class="kpi-value" id="user-kpi-co2">25.0 kg</div>
+            <div class="kpi-label">CO&#8322; Reduction Contribution</div>
+          </div>
+        </div>
+
+        <div class="chart-panel">
+          <div class="panel-header">
+            <div><div class="panel-title">My Achievements &amp; Gamification Badges</div></div>
+            <button class="panel-action-btn primary-action">ECO MILESTONES</button>
+          </div>
+          <div class="badges-grid">
+            <div class="badge-card" id="badge-rookie">
+              <span class="badge-icon">&#127807;</span>
+              <div class="badge-name">Eco Rookie</div>
+              <div class="badge-desc">Claim your first meal</div>
+            </div>
+            <div class="badge-card" id="badge-saver">
+              <span class="badge-icon">&#127869;</span>
+              <div class="badge-name">Meal Rescuer</div>
+              <div class="badge-desc">Rescue 5 meals total</div>
+            </div>
+            <div class="badge-card" id="badge-champion">
+              <span class="badge-icon">&#127807;</span>
+              <div class="badge-name">Green Champion</div>
+              <div class="badge-desc">Rescue 10+ meals</div>
+            </div>
+            <div class="badge-card" id="badge-legend">
+              <span class="badge-icon">&#128081;</span>
+              <div class="badge-name">Waste Legend</div>
+              <div class="badge-desc">Rescue 20+ meals</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="data-table-wrap">
+          <div style="padding:10px 14px;border-bottom:1px solid var(--border-color);"><span style="font-family:'Syne',sans-serif;font-size:0.85rem;font-weight:700;">My Claim History</span></div>
+          <table>
+            <thead><tr><th>Listing</th><th>Provider</th><th>Qty</th><th>Status</th><th>Date</th></tr></thead>
+            <tbody id="user-reservations-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- User: Surplus Feed -->
+      <div class="grid-section" id="section-user-feed">
+        <div class="panel-header" style="margin-bottom:0;">
+          <div>
+            <div class="panel-title">Browse Surplus Feed</div>
+            <div class="panel-subtitle">Active surplus offers near you &mdash; <span id="user-feed-badge">4 offers active</span></div>
+          </div>
+        </div>
+        <div class="filter-bar" id="category-filter-bar"></div>
+        <div class="offers-feed-grid" id="offers-feed-grid"></div>
+      </div>
+
+      <!-- User: Map -->
+      <div class="grid-section" id="section-user-map">
+        <div class="panel-header" style="margin-bottom:0;">
+          <div><div class="panel-title">Geographic Map View</div><div class="panel-subtitle">Active surplus offers near you &mdash; Oran, Algeria</div></div>
+        </div>
+        <div class="map-container" id="user-map-container"></div>
+      </div>
+
+      <!-- User: Leaderboard -->
+      <div class="grid-section" id="section-user-leaderboard">
+        <div class="panel-header" style="margin-bottom:0;">
+          <div><div class="panel-title">Top Restaurants</div><div class="panel-subtitle">Partners ranked by impact contribution</div></div>
+        </div>
+        <div class="leaderboard-list" id="user-leaderboard-list"></div>
+      </div>
+
+    </div><!-- /main-content -->
+
+  </div><!-- /page-main -->
+
+</div><!-- /page-dashboard -->
+
+<!-- ===== APP.JS ENGINE ===== -->
+<script src="app.js"></script>
+
+<!-- Stub: simulateSyncPulse if missing -->
+<script>
+if (typeof simulateSyncPulse === 'undefined') {
+  function simulateSyncPulse() {
+    if (typeof logTerminal === 'function') logTerminal('INFO', 'DG Circulation sync pulse triggered. Checking data consistency...');
+    if (typeof toast === 'function') toast('DG Circul. pulse sent.', 'success');
+  }
+}
+</script>
+</body>
+</html>
