@@ -354,7 +354,7 @@ def leaderboard(request):
     return JsonResponse(data, safe=False)
 
 
-# ── Predictions (mock) ────────────────────────────────────────────
+# ── Predictions — Modèles IA de Khadidja (dataset Kaggle) ────────
 @csrf_exempt
 def predictions(request):
     auth = JWTAuthentication()
@@ -363,25 +363,116 @@ def predictions(request):
         return JsonResponse({'detail': 'Non authentifié.'}, status=401)
     user, _ = user_auth
 
-    # Return mock predictions based on restaurant's past offers
     try:
-        restaurant = Restaurant.objects.get(user=user)
-        offers = Offer.objects.filter(restaurant=restaurant).order_by('-created_at')[:5]
-        import random
         from django.utils import timezone
         from datetime import timedelta
+        from .ai_engine import get_waste_predictor, get_recommendation_engine
+
+        restaurant = Restaurant.objects.get(user=user)
+        offers_qs = Offer.objects.filter(restaurant=restaurant).order_by('-created_at')[:5]
+
+        waste_predictor = get_waste_predictor()
+        now = timezone.now()
+
         preds = []
-        for o in offers:
+        offers_data = []
+
+        for o in offers_qs:
+            mins_left = max(0, int((o.expires_at - now).total_seconds() / 60))
+            offer_data = {
+                'title': o.title,
+                'category': o.category,
+                'original_price': float(o.original_price),
+                'current_price': float(o.current_price),
+                'quantity_total': o.quantity_total,
+                'quantity_remaining': o.quantity_remaining,
+                'minutes_left': mins_left,
+            }
+            offers_data.append(offer_data)
+
+            # Prédiction gaspillage via modèle Khadidja (Random Forest Kaggle)
+            waste_result = waste_predictor.predict(offer_data, now.replace(tzinfo=None))
+
+            pred_date = (now + timedelta(days=1)).strftime('%Y-%m-%d')
+
             preds.append({
                 'dish_name': o.title,
-                'predicted_date': (timezone.now() + timedelta(days=random.randint(1,5))).strftime('%Y-%m-%d'),
-                'predicted_waste_kg': round(random.uniform(0.5, 3.0), 1),
-                'risk_level': random.choice(['low', 'medium', 'high']),
-                'confidence_score': round(random.uniform(0.6, 0.95), 2),
+                'predicted_date': pred_date,
+                # ✅ Vrai modèle IA Khadidja — plus de random.uniform !
+                'predicted_waste_kg': waste_result['predicted_waste_kg'],
+                'risk_level': waste_result['risk_level'],
+                'confidence_score': waste_result['confidence_score'],
+                'model_name': waste_result['model_name'],
+                'r2_score': waste_result['r2_score'],
             })
-        return JsonResponse(preds, safe=False)
+
+        # Recommandations globales
+        rec_engine = get_recommendation_engine()
+        waste_preds = [p for p in preds]
+        recommendations = rec_engine.recommend(offers_data, waste_preds)
+
+        return JsonResponse({
+            'predictions': preds,
+            'recommendations': recommendations,
+            'ai_info': {
+                'model': waste_predictor.model_name,
+                'dataset': 'Kaggle - Dynamic Food Waste Forecasting for Smart Cities',
+                'features_used': len(waste_predictor.features),
+                'r2_score': round(waste_predictor.r2_score, 3),
+                'mae_kg': round(waste_predictor.mae / 1000, 3),
+            }
+        }, safe=False)
+
+    except Restaurant.DoesNotExist:
+        return JsonResponse({'predictions': [], 'recommendations': {}}, safe=False)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"[predictions] Error: {e}", exc_info=True)
+        return JsonResponse({'detail': str(e)}, status=500)
+
+
+# ── Dynamic Pricing — Modèle Khadidja ─────────────────────────────
+@csrf_exempt
+def dynamic_pricing(request):
+    auth = JWTAuthentication()
+    user_auth = auth.authenticate(request)
+    if user_auth is None:
+        return JsonResponse({'detail': 'Non authentifié.'}, status=401)
+    user, _ = user_auth
+
+    try:
+        from django.utils import timezone
+        from .ai_engine import get_pricing_engine
+
+        restaurant = Restaurant.objects.get(user=user)
+        offers_qs = Offer.objects.filter(restaurant=restaurant, status='active').order_by('-created_at')
+
+        pricing_engine = get_pricing_engine()
+        now = timezone.now()
+        results = []
+
+        for o in offers_qs:
+            mins_left = max(0, int((o.expires_at - now).total_seconds() / 60))
+            offer_data = {
+                'original_price': float(o.original_price),
+                'current_price': float(o.current_price),
+                'quantity_total': o.quantity_total,
+                'quantity_remaining': o.quantity_remaining,
+                'minutes_left': mins_left,
+            }
+            pricing = pricing_engine.compute_price(offer_data)
+            results.append({
+                'offer_id': o.id,
+                'title': o.title,
+                **pricing,
+            })
+
+        return JsonResponse(results, safe=False)
+
     except Restaurant.DoesNotExist:
         return JsonResponse([], safe=False)
+    except Exception as e:
+        return JsonResponse({'detail': str(e)}, status=500)
 
 
 # ── Seed (no-op, just prevents 404 errors on startup) ────────────

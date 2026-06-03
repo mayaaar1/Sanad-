@@ -29,7 +29,8 @@ from django.views.generic import TemplateView  # 👈 Import this to render your
 from core.views import (
     register_restaurant, login_user, create_offer, list_offers,
     my_offers, dashboard, create_reservation, my_reservations,
-    global_impact, offer_detail, leaderboard, predictions, seed
+    global_impact, offer_detail, leaderboard, predictions, seed,
+    dynamic_pricing
 )
 
 urlpatterns = [
@@ -47,6 +48,7 @@ urlpatterns = [
     path('api/impact/', global_impact),
     path('api/leaderboard/', leaderboard),
     path('api/predictions/', predictions),
-    path('api/predictions/generate/', predictions),     # same view, POST is ignored
+    path('api/predictions/generate/', predictions),     # POST → same view
+    path('api/pricing/', dynamic_pricing),              # ✅ Tarification dynamique Khadidja
     path('api/seed/', seed),
-]
+]
