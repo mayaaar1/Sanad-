@@ -2187,7 +2187,7 @@ tr:hover td { background:rgba(255,255,255,.02); }
   <section class="hero">
     <div>
       <div class="hero-badge">🌍 Plateforme anti-gaspillage · Oran, Algérie</div>
-      <h1>Transformez chaque surplus<br>en <em>repas sauvé</em> —<br>en <span class="orange">temps réel</span></h1>
+      <h1>Transformez chaque surplus en repas sauve - en temps reel</h1>
       <p>SavePlate connecte les restaurants avec leurs voisins pour éliminer le gaspillage alimentaire. Chaque transaction compte, chaque kilo est mesuré.</p>
       <div class="hero-cta">
         <button class="btn btn-primary" style="padding:.85rem 2rem;font-size:1rem" onclick="showPage('feed')">🍲 Voir les offres</button>
@@ -4709,28 +4709,64 @@ async function renderPredictions(el) {
     await apiFetch('/predictions/generate/', {method:'POST'});
     const res = await apiFetch('/predictions/');
     if (!res) return;
-    const preds = await res.json();
+    const data = await res.json();
+
+    // ✅ Nouveau format API : {predictions, recommendations, ai_info}
+    // Rétrocompatible : si l'API renvoie encore un tableau simple, on gère les deux
+    const preds  = Array.isArray(data) ? data : (data.predictions || []);
+    const recs   = (!Array.isArray(data) && data.recommendations) ? data.recommendations : null;
+    const aiInfo = (!Array.isArray(data) && data.ai_info) ? data.ai_info : null;
+
     el.innerHTML = `
     <div>
       <h2 style="font-family:'Syne',sans-serif;font-size:1.3rem;margin-bottom:.5rem">🤖 Prédictions IA de surplus</h2>
-      <p style="color:var(--text-dim);font-size:.85rem;margin-bottom:1.5rem">Basé sur l'historique de vos offres et les patterns hebdomadaires</p>
-      ${preds.map(p => `
+      <p style="color:var(--text-dim);font-size:.85rem;margin-bottom:1.25rem">Basé sur l'historique de vos offres — Modèle Kaggle Food Waste Forecasting</p>
+
+      ${aiInfo ? `
+      <div style="display:flex;align-items:center;gap:.75rem;background:rgba(26,158,92,.08);border:1px solid var(--border);border-radius:10px;padding:.75rem 1rem;margin-bottom:1.25rem;font-size:.82rem">
+        <span style="font-size:1.4rem">🧠</span>
+        <div>
+          <strong style="color:var(--green-light)">${aiInfo.model}</strong>
+          <span style="color:var(--text-dim);margin-left:.5rem">R²=${aiInfo.r2_score} · ${aiInfo.features_used} features</span><br>
+          <span style="color:var(--text-dim)">${aiInfo.dataset}</span>
+        </div>
+      </div>` : ''}
+
+      ${preds.length ? preds.map(p => `
         <div class="prediction-card">
-          <div>
+          <div style="flex:1.5">
             <div style="font-weight:600;margin-bottom:.25rem">${p.dish_name}</div>
-            <div style="font-size:.82rem;color:var(--text-dim)">${p.predicted_date}</div>
+            <div style="font-size:.82rem;color:var(--text-dim)">Forecast : ${p.predicted_date}</div>
+            ${p.model_name ? `<div style="font-size:.75rem;color:var(--text-dim);margin-top:.2rem">via ${p.model_name}</div>` : ''}
           </div>
           <div style="flex:1;text-align:center">
-            <div style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700">${p.predicted_waste_kg} kg</div>
+            <div style="font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:700;color:var(--text)">${p.predicted_waste_kg} kg</div>
             <div style="font-size:.78rem;color:var(--text-dim)">gaspillage prévu</div>
           </div>
-          <div>
+          <div style="text-align:right">
             <span class="risk-badge risk-${p.risk_level}">${p.risk_level}</span>
             <div style="font-size:.75rem;color:var(--text-dim);margin-top:.25rem">conf. ${Math.round(p.confidence_score*100)}%</div>
           </div>
         </div>
-      `).join('') || '<p style="color:var(--text-dim)">Aucune prédiction disponible.</p>'}
-      <div style="background:rgba(26,158,92,.08);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-top:1rem;font-size:.85rem">
+      `).join('') : '<p style="color:var(--text-dim);padding:1rem 0">Aucune prédiction — publiez des offres d\'abord.</p>'}
+
+      ${recs && recs.recommendations && recs.recommendations.length ? `
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1.1rem;margin-top:1.25rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.85rem">
+          <h3 style="font-size:.9rem;font-weight:700;color:var(--text)">💡 Recommandations IA</h3>
+          <span style="font-size:.78rem;color:var(--text-dim)">${recs.action_level || ''}</span>
+        </div>
+        ${recs.recommendations.map(r => `
+          <div style="padding:.6rem 0;border-bottom:1px solid var(--border);font-size:.85rem;color:var(--text-dim)">${r}</div>
+        `).join('')}
+        ${recs.average_waste_kg != null ? `
+        <div style="display:flex;gap:1.5rem;margin-top:.85rem;font-size:.82rem">
+          <div><span style="color:var(--text-dim)">Gaspillage moyen prévu</span><br><strong style="color:var(--orange)">${recs.average_waste_kg} kg/offre</strong></div>
+          <div><span style="color:var(--text-dim)">Total prévu</span><br><strong style="color:var(--red)">${recs.total_predicted_waste_kg} kg</strong></div>
+        </div>` : ''}
+      </div>` : ''}
+
+      <div style="background:rgba(26,158,92,.06);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-top:1rem;font-size:.85rem">
         💡 <strong>Conseil IA :</strong> Publiez vos offres 2-3h avant la fermeture pour maximiser le taux de sauvetage.
       </div>
     </div>
